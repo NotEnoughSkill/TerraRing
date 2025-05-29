@@ -104,7 +104,7 @@ namespace TerraRing
         private void ResetRollState()
         {
             IsRolling = false;
-        Rotation = 0f;
+            Rotation = 0f;
             IsOverweight = false;
             Player.fullRotation = 0f;
         }

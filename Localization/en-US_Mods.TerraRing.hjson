@@ -1,1 +1,10 @@
 Keybinds.Roll.DisplayName: Roll
+
+Items: {
+	RoundtableItem: {
+		DisplayName: Roundtable Item
+		Tooltip: ""
+	}
+}
+
+Tiles.RoundtableExitTile.MapEntry: Roundtable Exit Tile

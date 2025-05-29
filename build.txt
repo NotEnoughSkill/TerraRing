@@ -1,3 +1,4 @@
 displayName = Terra Ring
 author = Terra Ring Dev Team
 version = 0.1
+modReferences = SubworldLibrary
