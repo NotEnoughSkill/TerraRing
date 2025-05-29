@@ -56,6 +56,8 @@ namespace TerraRing
         public float LoopVelocity = 0;
         public float RampVelocity = 0;
         public Vector2 RotationOrigin;
+        private int staminaRegenDelay = 0;
+        private const int STAMINA_REGEN_COOLDOWN = 60;
 
         #region Input Handling
         private bool rollKeyPressed;
@@ -172,10 +174,27 @@ namespace TerraRing
 
         public override void PostUpdate()
         {
-            if (IsRolling)
+            if (staminaRegenDelay > 0)
             {
-                Player.height = Player.defaultHeight;
-                Player.width = Player.defaultWidth;
+                staminaRegenDelay--;
+            }
+
+            if (staminaRegenDelay <= 0)
+            {
+                if (CurrentStamina < MaxStamina)
+                {
+                    CurrentStamina += 0.5f;
+                    if (CurrentStamina > MaxStamina)
+                    {
+                        CurrentStamina = MaxStamina;
+                    }
+                }
+
+                if (IsRolling)
+                {
+                    Player.height = Player.defaultHeight;
+                    Player.width = Player.defaultWidth;
+                }
             }
         }
 
@@ -191,11 +210,6 @@ namespace TerraRing
                 if (!InBossFight && CurrentFP < MaxFP)
                 {
                     CurrentFP += 0.1f;
-                }
-
-                if (CurrentStamina < MaxStamina && !IsRolling)
-                {
-                    CurrentStamina += 0.5f;
                 }
             }
 
@@ -357,7 +371,6 @@ namespace TerraRing
                     return;
             }
 
-            CurrentStamina -= 20f;
             RollDirection = Player.controlRight ? 1 : -1;
             Player.direction = RollDirection;
 
@@ -366,8 +379,15 @@ namespace TerraRing
             Player.velocity.Y = 0f;
 
             ApplyIFrames();
+            ConsumeRollStamina();
 
             SoundEngine.PlaySound(SoundID.Item7 with { Volume = 0.5f, Pitch = GetRollSoundPitch() }, Player.Center);
+        }
+
+        public void ConsumeRollStamina()
+        {
+            CurrentStamina -= 20f;
+            staminaRegenDelay = STAMINA_REGEN_COOLDOWN;
         }
 
         private float GetRollSoundPitch()
