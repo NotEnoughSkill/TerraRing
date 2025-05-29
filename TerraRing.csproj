@@ -7,10 +7,12 @@
 	<PropertyGroup>
 		
 	</PropertyGroup>
+	<ItemGroup>
+	  <Folder Include="Buffs\" />
+	  <Folder Include="Items\" />
+	  <Folder Include="Projectiles\" />
+	</ItemGroup>
 
 	<!-- References -->
-	<ItemGroup>
-		
-	</ItemGroup>
 
 </Project>
