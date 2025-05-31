@@ -8,6 +8,7 @@ using Terraria;
 using Terraria.GameContent;
 using Terraria.ModLoader;
 using Terraria.UI;
+using TerraRing.UI;
 
 namespace TerraRing
 {
@@ -17,6 +18,33 @@ namespace TerraRing
         private int barWidth = 200;
         private int barHeight = 20;
         private int padding = 5;
+
+        internal RuneCounter RuneCounter;
+        private UserInterface _runeCounterInterface;
+
+        public override void Load()
+        {
+            if (!Main.dedServ)
+            {
+                RuneCounter = new RuneCounter();
+                RuneCounter.Activate();
+                _runeCounterInterface = new UserInterface();
+                _runeCounterInterface.SetState(RuneCounter);
+            }
+        }
+
+        public override void Unload()
+        {
+            RuneCounter = null;
+        }
+
+        public override void UpdateUI(GameTime gameTime)
+        {
+            if (!Main.gameMenu && !Main.dedServ) 
+            {
+                _runeCounterInterface?.Update(gameTime);
+            }
+        }
 
         public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
         {
@@ -28,6 +56,18 @@ namespace TerraRing
                     delegate
                     {
                         DrawResourceBar();
+                        return true;
+                    },
+                    InterfaceScaleType.UI));
+
+                layers.Insert(resourceBarIndex + 1, new LegacyGameInterfaceLayer(
+                    "TerraRing: Rune Counter",
+                    delegate
+                    {
+                        if (!Main.gameMenu)
+                        {
+                            _runeCounterInterface.Draw(Main.spriteBatch, new GameTime());
+                        }
                         return true;
                     },
                     InterfaceScaleType.UI));

@@ -20,6 +20,20 @@ Items: {
 			'''
 		CurrentBonus: Current Tier: {0} ({1}% damage)
 	}
+
+	RuneItem: {
+		DisplayName: Runes
+		Tooltip: "{0} Runes"
+		Value: "{0} Runes"
+	}
+}
+
+UI: {
+	Runes: {
+		Current: Runes: {0}
+		Retrieved: Retrieved {0} Runes
+	}
 }
 
 Tiles.RoundtableExitTile.MapEntry: Roundtable Exit Tile
+Projectiles.LostRunes.DisplayName: Lost Runes

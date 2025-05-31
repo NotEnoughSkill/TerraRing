@@ -13,6 +13,7 @@ using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
+using TerraRing.Projectiles;
 using TerraRing.Systems;
 
 namespace TerraRing
@@ -38,10 +39,6 @@ namespace TerraRing
         public float CurrentStamina;
         public float CurrentEquipLoad;
 
-        public long RunesHeld;
-        public long RunesLastDeath;
-        public Vector2 RunesLocation;
-        public bool HasLostRunes;
         #endregion
 
         #region Scaling
@@ -82,6 +79,15 @@ namespace TerraRing
         private const int DECAY_DELAY = 90;
         #endregion
 
+        #region Runes
+        public long CurrentRunes { get; set; }
+        public long LostRunes { get; set; }
+        public Vector2 LostRunesPosition { get; set; }
+        public bool HasLostRunes { get; set; }
+
+        private int lastDeathWorld;
+        #endregion
+
         #region Input Handling
         private bool rollKeyPressed;
         #endregion
@@ -116,9 +122,10 @@ namespace TerraRing
             CurrentStamina = MaxStamina;
             CurrentEquipLoad = 0f;
 
-            RunesHeld = 0;
-            RunesLastDeath = 0;
+            CurrentRunes = 0;
+            LostRunes = 0;
             HasLostRunes = false;
+            LostRunesPosition = Vector2.Zero;
 
             ResetRollState();
         }
@@ -148,16 +155,16 @@ namespace TerraRing
             tag["Intelligence"] = Intelligence;
             tag["Faith"] = Faith;
             tag["Arcane"] = Arcane;
-            tag["RunesHeld"] = RunesHeld;
-            tag["HasLostRunes"] = HasLostRunes;
+
             tag["AccumuVal"] = accumulatedValue;
             tag["LastHitTime"] = lastHitTime;
-            if (HasLostRunes)
-            {
-                tag["RunesLastDeath"] = RunesLastDeath;
-                tag["RunesLocationX"] = RunesLocation.X;
-                tag["RunesLocationY"] = RunesLocation.Y;
-            }
+
+            tag["CurrentRunes"] = (long)CurrentRunes;
+            tag["LostRunes"] = (long)LostRunes;
+            tag["HasLostRunes"] = HasLostRunes;
+            tag["LostRunesX"] = LostRunesPosition.X;
+            tag["LostRunesY"] = LostRunesPosition.Y;
+            tag["LastDeathWorld"] = lastDeathWorld;
         }
 
         public override void LoadData(TagCompound tag)
@@ -170,15 +177,19 @@ namespace TerraRing
             Intelligence = tag.GetInt("Intelligence");
             Faith = tag.GetInt("Faith");
             Arcane = tag.GetInt("Arcane");
-            RunesHeld = tag.GetLong("RunesHeld");
             HasLostRunes = tag.GetBool("HasLostRunes");
+
             accumulatedValue = tag.GetFloat("AccumuVal");
             lastHitTime = tag.Get<uint>("LastHitTime");
-            if (HasLostRunes)
-            {
-                RunesLastDeath = tag.GetLong("RunesLastDeath");
-                RunesLocation = new Vector2(tag.GetFloat("RunesLocationX"), tag.GetFloat("RunesLocationY"));
-            }
+
+            CurrentRunes = tag.Get<long>("CurrentRunes");
+            LostRunes = tag.Get<long>("LostRunes");
+            HasLostRunes = tag.GetBool("HasLostRunes");
+            LostRunesPosition = new Vector2(
+                tag.GetFloat("LostRunesX"),
+                tag.GetFloat("LostRunesY")
+            );
+            lastDeathWorld = tag.GetInt("LastDeathWorld");
         }
 
         public float GetAccumuVal()
@@ -481,19 +492,11 @@ namespace TerraRing
 
         public override void OnHitByNPC(NPC npc, Player.HurtInfo hurtInfo)
         {
-            if (Player.statLife - hurtInfo.Damage <= 0 && !HasLostRunes)
-            {
-                DropRunes();
-            }
             HandleHit();
         }
 
         public override void OnHitByProjectile(Projectile proj, Player.HurtInfo hurtInfo)
         {
-            if (Player.statLife - hurtInfo.Damage <= 0 && !HasLostRunes)
-            {
-                DropRunes();
-            }
             HandleHit();
         }
 
@@ -541,30 +544,9 @@ namespace TerraRing
             return item.rare + 1f;
         }
 
-        private void DropRunes()
-        {
-            if (RunesHeld > 0)
-            {
-                RunesLastDeath = RunesHeld;
-                RunesLocation = new Microsoft.Xna.Framework.Vector2(Player.Center.X, Player.Center.Y);
-                RunesHeld = 0;
-                HasLostRunes = true;
-            }
-        }
-
-        public void CollectRunes()
-        {
-            if (HasLostRunes)
-            {
-                RunesHeld += RunesLastDeath;
-                RunesLastDeath = 0;
-                HasLostRunes = false;
-            }
-        }
-
         public bool TryLevelUp(string stat, int runesCost)
         {
-            if (RunesHeld >= runesCost)
+            if (CurrentRunes >= runesCost)
             {
                 switch (stat.ToLower())
                 {
@@ -595,10 +577,98 @@ namespace TerraRing
                     default:
                         return false;
                 }
-                RunesHeld -= runesCost;
+                CurrentRunes -= runesCost;
                 return true;
             }
             return false;
+        }
+        #endregion
+
+        #region Runes Methods
+        public void AddRunes(long amount)
+        {
+            if (amount > 0)
+            {
+                CurrentRunes += amount;
+                if (Main.netMode != NetmodeID.SinglePlayer)
+                {
+                    ModPacket packet = Mod.GetPacket();
+                    packet.Write((byte)MessageType.SyncRunes);
+                    packet.Write(Player.whoAmI);
+                    packet.Write(CurrentRunes);
+                    packet.Send();
+                }
+            }
+        }
+
+        public bool SpendRunes(long amount)
+        {
+            if (amount <= CurrentRunes)
+            {
+                CurrentRunes -= amount;
+                if (Main.netMode != NetmodeID.SinglePlayer)
+                {
+                    ModPacket packet = Mod.GetPacket();
+                    packet.Write((byte)MessageType.SyncRunes);
+                    packet.Write(Player.whoAmI);
+                    packet.Write(CurrentRunes);
+                    packet.Send();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public override bool PreKill(double damage, int hitDirection, bool pvp, ref bool playSound, ref bool genDust, ref PlayerDeathReason damageSource)
+        {
+            if (CurrentRunes > 0)
+            {
+                LostRunes = CurrentRunes;
+                CurrentRunes = 0;
+                LostRunesPosition = Player.position;
+                HasLostRunes = true;
+                lastDeathWorld = Main.worldID;
+
+                if (Main.netMode != NetmodeID.MultiplayerClient)
+                {
+                    int projIndex = Projectile.NewProjectile(
+                        Player.GetSource_Death(),
+                        LostRunesPosition,
+                        Vector2.Zero,
+                        ModContent.ProjectileType<LostRunes>(),
+                        0,
+                        0f,
+                        Player.whoAmI
+                    );
+
+                    if (projIndex >= 0 && projIndex < Main.maxProjectiles)
+                    {
+                        Main.projectile[projIndex].ai[0] = LostRunes;
+                    }
+                }
+
+                if (Main.netMode != NetmodeID.SinglePlayer)
+                {
+                    ModPacket packet = Mod.GetPacket();
+                    packet.Write((byte)MessageType.SyncLostRunes);
+                    packet.Write(Player.whoAmI);
+                    packet.Write(LostRunes);
+                    packet.Write(LostRunesPosition.X);
+                    packet.Write(LostRunesPosition.Y);
+                    packet.Send();
+                }
+            }
+            return base.PreKill(damage, hitDirection, pvp, ref playSound, ref genDust, ref damageSource);
+        }
+
+        public override void OnEnterWorld()
+        {
+            if (HasLostRunes && lastDeathWorld != Main.worldID)
+            {
+                HasLostRunes = false;
+                LostRunes = 0;
+                LostRunesPosition = Vector2.Zero;
+            }
         }
         #endregion
 
@@ -636,7 +706,9 @@ namespace TerraRing
 
         public enum MessageType : byte
         {
-            SyncTerraRingPlayer
+            SyncTerraRingPlayer,
+            SyncRunes,
+            SyncLostRunes
         }
         #endregion
     }
