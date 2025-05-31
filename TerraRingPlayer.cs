@@ -72,6 +72,15 @@ namespace TerraRing
         public Vector2 RotationOrigin;
         private int staminaRegenDelay = 0;
         private const int STAMINA_REGEN_COOLDOWN = 60;
+        #endregion
+
+        #region AccumuVal
+        private float accumulatedValue = 0f;
+        private uint lastHitTime = 0;
+        private const float DECAY_RATE = 0.95f;
+        private const float MAX_ACCUMU_VAL = 100f;
+        private const int DECAY_DELAY = 90;
+        #endregion
 
         #region Input Handling
         private bool rollKeyPressed;
@@ -90,7 +99,6 @@ namespace TerraRing
         public bool CanUseAshOfWar = true;
         public bool InBossFight;
         public bool IsAtSiteOfGrace;
-        #endregion
 
         #region Initialization
         public override void Initialize()
@@ -142,6 +150,8 @@ namespace TerraRing
             tag["Arcane"] = Arcane;
             tag["RunesHeld"] = RunesHeld;
             tag["HasLostRunes"] = HasLostRunes;
+            tag["AccumuVal"] = accumulatedValue;
+            tag["LastHitTime"] = lastHitTime;
             if (HasLostRunes)
             {
                 tag["RunesLastDeath"] = RunesLastDeath;
@@ -162,11 +172,18 @@ namespace TerraRing
             Arcane = tag.GetInt("Arcane");
             RunesHeld = tag.GetLong("RunesHeld");
             HasLostRunes = tag.GetBool("HasLostRunes");
+            accumulatedValue = tag.GetFloat("AccumuVal");
+            lastHitTime = tag.Get<uint>("LastHitTime");
             if (HasLostRunes)
             {
                 RunesLastDeath = tag.GetLong("RunesLastDeath");
                 RunesLocation = new Vector2(tag.GetFloat("RunesLocationX"), tag.GetFloat("RunesLocationY"));
             }
+        }
+
+        public float GetAccumuVal()
+        {
+            return accumulatedValue;
         }
         #endregion
 
@@ -208,6 +225,15 @@ namespace TerraRing
                 {
                     Player.height = Player.defaultHeight;
                     Player.width = Player.defaultWidth;
+                }
+            }
+
+            if (Main.GameUpdateCount - lastHitTime > DECAY_DELAY)
+            {
+                accumulatedValue *= DECAY_RATE;
+                if (accumulatedValue < 0.1f)
+                {
+                    accumulatedValue = 0f;
                 }
             }
         }
@@ -459,6 +485,7 @@ namespace TerraRing
             {
                 DropRunes();
             }
+            HandleHit();
         }
 
         public override void OnHitByProjectile(Projectile proj, Player.HurtInfo hurtInfo)
@@ -467,6 +494,25 @@ namespace TerraRing
             {
                 DropRunes();
             }
+            HandleHit();
+        }
+
+        public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone)
+        {
+            base.OnHitNPC(target, hit, damageDone);
+            HandleHit();
+        }
+
+        public override void OnHitNPCWithProj(Projectile proj, NPC target, NPC.HitInfo hit, int damageDone)
+        {
+            base.OnHitNPCWithProj(proj, target, hit, damageDone);
+            HandleHit();
+        }
+
+        private void HandleHit()
+        {
+            accumulatedValue = System.Math.Min(accumulatedValue + 10f, MAX_ACCUMU_VAL);
+            lastHitTime = Main.GameUpdateCount;
         }
         #endregion
 

@@ -8,6 +8,18 @@ Items: {
 		DisplayName: Roundtable Item
 		Tooltip: ""
 	}
+
+	WingedSwordInsignia: {
+		DisplayName: Winged Sword Insignia
+		Tooltip:
+			'''
+			Increases attack power relative to the number of attacks you land
+			Has three tiers of attack power increase (3%, 5%, 10%)
+			Tiers decay to lower tiers when not attacking for 1.5 seconds
+			'An honor bestowed upon the knights most valiant in battle'
+			'''
+		CurrentBonus: Current Tier: {0} ({1}% damage)
+	}
 }
 
 Tiles.RoundtableExitTile.MapEntry: Roundtable Exit Tile
