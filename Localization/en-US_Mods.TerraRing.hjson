@@ -1,4 +1,7 @@
-Keybinds.Roll.DisplayName: Roll
+Keybinds: {
+	Roll.DisplayName: Roll
+	"Open Status Menu.DisplayName": Open  Status  Menu
+}
 
 Items: {
 	RoundtableItem: {

@@ -12,6 +12,7 @@ namespace TerraRing
     internal class TerraRingKeybinds : ModSystem
     {
         public static ModKeybind RollKey { get; private set; }
+        public static ModKeybind StatusMenuKey { get; private set; }
 
         public override void Load()
         {

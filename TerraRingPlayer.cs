@@ -13,6 +13,7 @@ using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
+using TerraRing.Systems;
 
 namespace TerraRing
 {
@@ -41,6 +42,19 @@ namespace TerraRing
         public long RunesLastDeath;
         public Vector2 RunesLocation;
         public bool HasLostRunes;
+        #endregion
+
+        #region Scaling
+        public float PhysicalDefence => 100f + (2f * Vigor) + (1.5f * Strength);
+        public float MagicDefense => 100f + (2f * Mind) + (1.8f * Intelligence);
+        public float FireDefense => 100f + (1.5f * Vigor) + (1.2f * Faith);
+        public float LightningDefense => 100f + (1.2f * Endurance) + (1.5f * Faith);
+
+        public float StrengthScaling => 1f + (Strength * 0.01f);
+        public float DexterityScaling => 1f + (Dexterity * 0.01f);
+        public float IntelligenceScaling => 1f + (Intelligence * 0.01f);
+        public float FaithScaling => 1f + (Faith * 0.01f);
+        public float ArcaneScaling => 1f + (Arcane * 0.01f);
         #endregion
 
         #region Rolling States
