@@ -1,11 +1,14 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Terraria;
+using Terraria.Audio;
 using Terraria.GameContent;
+using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.UI;
 using TerraRing.UI;
@@ -14,6 +17,8 @@ namespace TerraRing
 {
     internal class TerraRingUI : ModSystem
     {
+        public static TerraRingUI Instance { get; private set; }
+
         private Vector2 barPosition = new Vector2(570, 20);
         private int barWidth = 200;
         private int barHeight = 20;
@@ -22,27 +27,51 @@ namespace TerraRing
         internal RuneCounter RuneCounter;
         private UserInterface _runeCounterInterface;
 
+        internal UserInterface SiteOfGraceInterface;
+        internal SiteOfGraceUI SiteOfGraceUI;
+
         public override void Load()
         {
+            Instance = this;
             if (!Main.dedServ)
             {
                 RuneCounter = new RuneCounter();
                 RuneCounter.Activate();
                 _runeCounterInterface = new UserInterface();
                 _runeCounterInterface.SetState(RuneCounter);
+
+                SiteOfGraceInterface = new UserInterface();
+                SiteOfGraceUI = new SiteOfGraceUI();
             }
         }
 
         public override void Unload()
         {
+            Instance = null;
             RuneCounter = null;
+            SiteOfGraceInterface = null;
+            SiteOfGraceUI = null;
         }
 
         public override void UpdateUI(GameTime gameTime)
         {
-            if (!Main.gameMenu && !Main.dedServ) 
+            if (!Main.gameMenu && !Main.dedServ)
             {
                 _runeCounterInterface?.Update(gameTime);
+                SiteOfGraceInterface?.Update(gameTime);
+            }
+        }
+
+        public void HideSiteOfGraceUI()
+        {
+            SiteOfGraceInterface?.SetState(null);
+        }
+
+        public void ShowSiteOfGraceUI()
+        {
+            if (SiteOfGraceInterface?.CurrentState != SiteOfGraceUI)
+            {
+                SiteOfGraceInterface?.SetState(SiteOfGraceUI);
             }
         }
 
@@ -71,6 +100,91 @@ namespace TerraRing
                         return true;
                     },
                     InterfaceScaleType.UI));
+            }
+
+            int mouseTextIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Mouse Text"));
+            if (mouseTextIndex != -1)
+            {
+                layers.Insert(mouseTextIndex, new LegacyGameInterfaceLayer(
+                    "TerraRing: Site of Grace UI",
+                    delegate
+                    {
+                        SiteOfGraceInterface?.Draw(Main.spriteBatch, new GameTime());
+                        return true;
+                    },
+                    InterfaceScaleType.UI)
+                );
+            }
+
+            int mapIndex = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Map"));
+            if (mapIndex != -1)
+            {
+                layers.Insert(mapIndex + 1, new LegacyGameInterfaceLayer(
+                    "TerraRing: Map Icons",
+                    delegate
+                    {
+                        if (Main.mapFullscreen)
+                        {
+                            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
+                            if (modPlayer.MapTravelMode)
+                            {
+                                DrawMapIcons();
+                            }
+                        }
+                        return true;
+                    },
+                    InterfaceScaleType.Game)
+                );
+            }
+        }
+
+        private void DrawMapIcons()
+        {
+            if (!Main.mapFullscreen) return;
+
+            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
+
+            foreach (Point site in modPlayer.DiscoveredSitesOfGrace)
+            {
+                Vector2 mapPosition = new Vector2(site.X, site.Y) * 16;
+                Vector2 screenPosition = (mapPosition - Main.mapFullscreenPos) * Main.mapFullscreenScale + new Vector2(Main.screenWidth / 2, Main.screenHeight / 2);
+
+                Rectangle mouseRect = new Rectangle(Main.mouseX - 5, Main.mouseY - 5, 10, 10);
+                Rectangle iconRect = new Rectangle((int)screenPosition.X - 8, (int)screenPosition.Y - 8, 16, 16);
+                bool isHovered = mouseRect.Intersects(iconRect);
+
+                float scale = isHovered ? 1.2f : 1f;
+                Color color = isHovered ? Color.Gold : Color.Yellow;
+
+                Main.spriteBatch.Draw(
+                    TextureAssets.Star[0].Value,
+                    screenPosition,
+                    null,
+                    color,
+                    Main.GameUpdateCount * 0.1f,
+                    new Vector2(TextureAssets.Star[0].Value.Width / 2f),
+                    scale * 0.5f,
+                    SpriteEffects.None,
+                    0f
+                );
+
+                if (isHovered)
+                {
+                    Utils.DrawBorderString(
+                        Main.spriteBatch,
+                        "Site of Grace",
+                        screenPosition + new Vector2(0, -20),
+                        Color.White,
+                        1f,
+                        0.5f,
+                        0.5f
+                    );
+
+                    if (Main.mouseLeft && Main.mouseLeftRelease)
+                    {
+                        modPlayer.TravelToSite(site);
+                    }
+                }
             }
         }
 

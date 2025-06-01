@@ -1,6 +1,7 @@
 Keybinds: {
 	Roll.DisplayName: Roll
 	"Open Status Menu.DisplayName": Open  Status  Menu
+	"Clear Sites of Grace.DisplayName": Clear  Sites of  Grace
 }
 
 Items: {
@@ -26,6 +27,11 @@ Items: {
 		Tooltip: "{0} Runes"
 		Value: "{0} Runes"
 	}
+
+	SiteOfGrace: {
+		DisplayName: Site Of Grace
+		Tooltip: ""
+	}
 }
 
 UI: {
@@ -35,5 +41,12 @@ UI: {
 	}
 }
 
-Tiles.RoundtableExitTile.MapEntry: Roundtable Exit Tile
+Tiles: {
+	RoundtableExitTile.MapEntry: Roundtable Exit Tile
+	SiteOfGraceTile.MapEntry: Site Of Grace Tile
+}
+
+MapObject.SiteOfGraceTile: Site of Grace
+ItemName.SiteOfGraceItem: Site of Grace
+TileName.SiteOfGraceTile: Site of Grace
 Projectiles.LostRunes.DisplayName: Lost Runes

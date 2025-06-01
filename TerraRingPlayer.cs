@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
@@ -94,6 +95,17 @@ namespace TerraRing
         private int lastDeathWorld;
         #endregion
 
+        #region Site of Grace
+        public bool IsAtSiteOfGrace { get; set; }
+        public Point LastSiteOfGracePosition { get; set; }
+        public string LastSiteOfGraceName { get; set; }
+        public List<Point> DiscoveredSitesOfGrace { get; private set; } = new List<Point>();
+
+        public bool MapTravelMode { get; set; }
+        public bool CanTravel { get; set; }
+        private Point? selectedSiteOfGrace;
+        #endregion
+
         #region Input Handling
         private bool rollKeyPressed;
         #endregion
@@ -110,7 +122,6 @@ namespace TerraRing
 
         public bool CanUseAshOfWar = true;
         public bool InBossFight;
-        public bool IsAtSiteOfGrace;
 
         #region Initialization
         public override void Initialize()
@@ -133,6 +144,10 @@ namespace TerraRing
             HasLostRunes = false;
             LostRunesPosition = Vector2.Zero;
 
+            DiscoveredSitesOfGrace = new List<Point>();
+            MapTravelMode = false;
+            IsAtSiteOfGrace = false;
+
             ResetRollState();
         }
 
@@ -144,9 +159,40 @@ namespace TerraRing
             Player.fullRotation = 0f;
         }
 
+        public void ClearSitesOfGrace()
+        {
+            int count = DiscoveredSitesOfGrace.Count;
+            DiscoveredSitesOfGrace.Clear();
+
+            SoundEngine.PlaySound(SoundID.Item4 with { Volume = 0.5f, Pitch = 0.2f });
+
+            for (int i = 0; i < 50; i++)
+            {
+                Vector2 position = Player.Center + Main.rand.NextVector2Circular(100f, 100f);
+                Dust.NewDust(position, 32, 32, DustID.GoldFlame,
+                    Scale: Main.rand.NextFloat(1f, 1.5f));
+            }
+
+            CombatText.NewText(Player.getRect(), new Color(255, 207, 107),
+                $"Cleared {count} Sites of Grace", true);
+
+            if (Main.netMode == NetmodeID.MultiplayerClient)
+            {
+                ModPacket packet = Mod.GetPacket();
+                packet.Write((byte)MessageType.ClearSitesOfGrace);
+                packet.Write(Player.whoAmI);
+                packet.Send();
+            }
+        }
+
         public override void ProcessTriggers(TriggersSet triggersSet)
         {
             rollKeyPressed = TerraRingKeybinds.RollKey.JustPressed;
+
+            if (TerraRingKeybinds.ClearSitesKey.JustPressed)
+            {
+                ClearSitesOfGrace();
+            }
         }
         #endregion
 
@@ -171,6 +217,10 @@ namespace TerraRing
             tag["LostRunesX"] = LostRunesPosition.X;
             tag["LostRunesY"] = LostRunesPosition.Y;
             tag["LastDeathWorld"] = lastDeathWorld;
+
+            tag["SitesOfGrace"] = DiscoveredSitesOfGrace.Select(p => $"{p.X},{p.Y}").ToList();
+            tag["MapTravelMode"] = MapTravelMode;
+            tag["IsAtSiteOfGrace"] = IsAtSiteOfGrace;
         }
 
         public override void LoadData(TagCompound tag)
@@ -196,6 +246,19 @@ namespace TerraRing
                 tag.GetFloat("LostRunesY")
             );
             lastDeathWorld = tag.GetInt("LastDeathWorld");
+
+            DiscoveredSitesOfGrace.Clear();
+            var sites = tag.Get<List<string>>("SitesOfGrace") ?? new List<string>();
+            foreach (var site in sites)
+            {
+                var coords = site.Split(',');
+                if (coords.Length == 2 && int.TryParse(coords[0], out int x) && int.TryParse(coords[1], out int y))
+                {
+                    DiscoveredSitesOfGrace.Add(new Point(x, y));
+                }
+            }
+            MapTravelMode = tag.GetBool("MapTravelMode");
+            IsAtSiteOfGrace = tag.GetBool("IsAtSiteOfGrace");
         }
 
         public float GetAccumuVal()
@@ -204,10 +267,62 @@ namespace TerraRing
         }
         #endregion
 
+        public void DebugPrintSites()
+        {
+            Main.NewText($"Total Sites of Grace discovered: {DiscoveredSitesOfGrace.Count}", Color.Yellow);
+            for (int i = 0; i < DiscoveredSitesOfGrace.Count; i++)
+            {
+                Point site = DiscoveredSitesOfGrace[i];
+                Main.NewText($"Site {i + 1}: ({site.X}, {site.Y})", Color.White);
+            }
+        }
+
         #region Update Logic
         public override void PreUpdate()
         {
-            base.PreUpdate();
+            if (Main.keyState.IsKeyDown(Keys.P) && !Main.oldKeyState.IsKeyDown(Keys.P))
+            {
+                DebugPrintSites();
+            }
+
+
+            bool wasAtSiteOfGrace = IsAtSiteOfGrace;
+            IsAtSiteOfGrace = false;
+
+            Point playerTile = Player.Center.ToTileCoordinates();
+            foreach (Point site in DiscoveredSitesOfGrace)
+            {
+                if (Vector2.Distance(playerTile.ToVector2(), site.ToVector2()) < 3f)
+                {
+                    IsAtSiteOfGrace = true;
+                    break;
+                }
+            }
+
+            if (wasAtSiteOfGrace && !IsAtSiteOfGrace && Main.netMode != NetmodeID.Server)
+            {
+                TerraRingUI.Instance.HideSiteOfGraceUI();
+            }
+
+            if (MapTravelMode)
+            {
+                if (!Main.mapFullscreen)
+                {
+                    MapTravelMode = false;
+                }
+                else if (Main.keyState.IsKeyDown(Keys.Escape))
+                {
+                    MapTravelMode = false;
+                    Main.mapFullscreen = false;
+                    Main.mapEnabled = false;
+                }
+            }
+
+            if (!MapTravelMode && Main.mapFullscreen)
+            {
+                Main.mapFullscreen = false;
+                Main.mapEnabled = true;
+            }
 
             if (IsRolling)
             {
@@ -251,6 +366,27 @@ namespace TerraRing
                 if (accumulatedValue < 0.1f)
                 {
                     accumulatedValue = 0f;
+                }
+            }
+
+            if (MapTravelMode && Main.mapFullscreen)
+            {
+                Vector2 mouseWorld = Main.mapFullscreenPos + new Vector2(Main.mouseX - Main.screenWidth / 2, Main.mouseY - Main.screenHeight / 2) / Main.mapFullscreenScale;
+                Point mouseTile = mouseWorld.ToTileCoordinates();
+
+                selectedSiteOfGrace = null;
+
+                foreach (Point site in DiscoveredSitesOfGrace)
+                {
+                    if (Vector2.Distance(site.ToVector2(), mouseTile.ToVector2()) < 3f)
+                    {
+                        selectedSiteOfGrace = site;
+                        if (Main.mouseLeft && Main.mouseLeftRelease)
+                        {
+                            TravelToSite(site);
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -554,6 +690,24 @@ namespace TerraRing
             }
             return false;
         }
+
+        public override void ModifyDrawInfo(ref PlayerDrawSet drawInfo)
+        {
+            if (Main.mapFullscreen)
+            {
+                foreach (Point site in DiscoveredSitesOfGrace)
+                {
+                    Vector2 mapPos = site.ToVector2() * 16;
+                    Vector2 screenPos = Main.mapFullscreenPos + (mapPos - Main.mapFullscreenPos) * Main.mapFullscreenScale;
+
+                    bool isSelected = selectedSiteOfGrace.HasValue && selectedSiteOfGrace.Value == site;
+                    Color iconColor = isSelected ? new Color(255, 207, 107) : new Color(200, 170, 80);
+
+                    Main.spriteBatch.Draw(ModContent.Request<Texture2D>("TerraRing/Items/Placeables/SiteOfGrace").Value,
+                        screenPos, null, iconColor, 0f, Vector2.Zero, Main.mapFullscreenScale, SpriteEffects.None, 0f);
+                }
+            }
+        }
         #endregion
 
         #region Runes Methods
@@ -633,6 +787,16 @@ namespace TerraRing
             return base.PreKill(damage, hitDirection, pvp, ref playSound, ref genDust, ref damageSource);
         }
 
+        public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
+        {
+            base.Kill(damage, hitDirection, pvp, damageSource);
+
+            if (Main.netMode != NetmodeID.Server)
+            {
+                TerraRingUI.Instance.HideSiteOfGraceUI();
+            }
+        }
+
         public override void OnEnterWorld()
         {
             if (HasLostRunes && lastDeathWorld != Main.worldID)
@@ -640,6 +804,141 @@ namespace TerraRing
                 HasLostRunes = false;
                 LostRunes = 0;
                 LostRunesPosition = Vector2.Zero;
+            }
+        }
+        #endregion
+
+        #region Site of Grace Methods
+        public void ActivateSiteOfGrace(Point position)
+        {
+            bool isNewDiscovery = !DiscoveredSitesOfGrace.Any(p => p.X == position.X && p.Y == position.Y);
+
+            if (isNewDiscovery)
+            {
+                DiscoveredSitesOfGrace.Add(position);
+                CombatText.NewText(Player.getRect(), new Color(255, 207, 107), "Site of Grace discovered", true);
+
+                SoundEngine.PlaySound(SoundID.Item4 with { Volume = 0.5f, Pitch = 0.2f });
+
+                for (int i = 0; i < 50; i++)
+                {
+                    Vector2 position2 = position.ToVector2() * 16;
+                    Vector2 speed = Main.rand.NextVector2Circular(8f, 8f);
+                    Dust.NewDust(position2, 32, 32, DustID.GoldFlame, speed.X, speed.Y);
+                }
+
+                if (Main.netMode == NetmodeID.MultiplayerClient)
+                {
+                    ModPacket packet = Mod.GetPacket();
+                    packet.Write((byte)MessageType.SyncSiteOfGrace);
+                    packet.Write(position.X);
+                    packet.Write(position.Y);
+                    packet.Send();
+                }
+            }
+
+            IsAtSiteOfGrace = true;
+            LastSiteOfGracePosition = position;
+            LastSiteOfGraceName = "Site of Grace";
+
+            Player.statLife = Player.statLifeMax2;
+            Player.statMana = Player.statManaMax2;
+            CurrentFP = MaxFP;
+            CurrentStamina = MaxStamina;
+
+            for (int i = 0; i < Player.buffType.Length; i++)
+            {
+                if (Main.debuff[Player.buffType[i]])
+                {
+                    Player.DelBuff(i);
+                    i--;
+                }
+            }
+
+            if (Main.netMode != NetmodeID.Server)
+            {
+                TerraRingUI.Instance.ShowSiteOfGraceUI();
+            }
+        }
+
+        public void TeleportToLastSiteOfGrace()
+        {
+            if (LastSiteOfGracePosition != Point.Zero)
+            {
+                Player.Teleport(new Vector2(LastSiteOfGracePosition.X * 16 + 16, LastSiteOfGracePosition.Y * 16));
+
+                if (Main.netMode != NetmodeID.Server)
+                {
+                    for (int i = 0; i < 50; i++)
+                    {
+                        Dust.NewDust(Player.position, Player.width, Player.height,
+                            DustID.GoldFlame, Scale: 1.5f);
+                    }
+                }
+            }
+        }
+
+        public void TravelToSite(Point site)
+        {
+            if (!DiscoveredSitesOfGrace.Any(p => p.X == site.X && p.Y == site.Y))
+                return;
+
+            MapTravelMode = false;
+            Main.mapFullscreen = false;
+            Main.mapEnabled = false;
+
+            SoundEngine.PlaySound(SoundID.Item6);
+
+            for (int i = 0; i < 50; i++)
+            {
+                Dust.NewDust(Player.position, Player.width, Player.height,
+                    DustID.GoldFlame,
+                    Scale: Main.rand.NextFloat(1f, 1.5f));
+            }
+
+            Player.Teleport(new Vector2(site.X * 16 + 8, site.Y * 16));
+
+            for (int i = 0; i < 50; i++)
+            {
+                Dust.NewDust(Player.position, Player.width, Player.height,
+                    DustID.GoldFlame,
+                    Scale: Main.rand.NextFloat(1f, 1.5f));
+            }
+        }
+
+        public void DiscoverSiteOfGrace(Point position)
+        {
+            bool siteExists = DiscoveredSitesOfGrace.Any(p =>
+                Math.Abs(p.X - position.X) <= 2 &&
+                Math.Abs(p.Y - position.Y) <= 2);
+
+            if (!siteExists)
+            {
+                DiscoveredSitesOfGrace.Add(position);
+            }
+        }
+
+        public void RemoveSiteOfGrace(Point position)
+        {
+            if (DiscoveredSitesOfGrace.RemoveAll(p => p.X == position.X && p.Y == position.Y) > 0)
+            {
+                CombatText.NewText(Player.getRect(), new Color(255, 207, 107), "Site of Grace removed", true);
+
+                for (int i = 0; i < 30; i++)
+                {
+                    Vector2 dustPos = position.ToVector2() * 16;
+                    Vector2 speed = Main.rand.NextVector2Circular(8f, 8f);
+                    Dust.NewDust(dustPos, 32, 32, DustID.GoldFlame, speed.X, speed.Y);
+                }
+
+                if (Main.netMode == NetmodeID.MultiplayerClient)
+                {
+                    ModPacket packet = Mod.GetPacket();
+                    packet.Write((byte)MessageType.RemoveSiteOfGrace);
+                    packet.Write(position.X);
+                    packet.Write(position.Y);
+                    packet.Send();
+                }
             }
         }
         #endregion
@@ -680,7 +979,10 @@ namespace TerraRing
         {
             SyncTerraRingPlayer,
             SyncRunes,
-            SyncLostRunes
+            SyncLostRunes,
+            SyncSiteOfGrace,
+            RemoveSiteOfGrace,
+            ClearSitesOfGrace
         }
         #endregion
     }
