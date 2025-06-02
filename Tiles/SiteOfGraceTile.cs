@@ -18,6 +18,7 @@ using Terraria.Audio;
 using Terraria.GameContent;
 using Terraria.Map;
 using Terraria.UI;
+using Terraria.ModLoader.Default;
 
 namespace TerraRing.Tiles
 {
@@ -27,6 +28,8 @@ namespace TerraRing.Tiles
 
         public override void Load()
         {
+            base.Load();
+            On_Player.InInteractionRange += Player_InInteractionRange;
             mapIcon = ModContent.Request<Texture2D>("TerraRing/Tiles/SiteOfGraceTile_MapIcon", AssetRequestMode.ImmediateLoad);
         }
 
@@ -131,58 +134,17 @@ namespace TerraRing.Tiles
             ModContent.GetInstance<SiteOfGraceEntity>().Place(i, j);
         }
 
-        public override void DrawMapIcon(
-        ref MapOverlayDrawContext context,
-        ref string mouseOverText,
-        TeleportPylonInfo pylonInfo,
-        bool isNearPylon,
-        Color drawColor,
-        float deselectedScale,
-        float selectedScale)
+        public override void DrawMapIcon(ref MapOverlayDrawContext context, ref string mouseOverText, TeleportPylonInfo pylonInfo, bool isNearPylon, Color drawColor, float deselectedScale, float selectedScale)
         {
-            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
+            Color localDrawColor = Color.White;
 
-            Point pylonPos = new Point(pylonInfo.PositionInTiles.X, pylonInfo.PositionInTiles.Y);
+            bool isHovered = DefaultDrawMapIcon(ref context, mapIcon, new Vector2(pylonInfo.PositionInTiles.X + 1.5f, pylonInfo.PositionInTiles.Y + 1.5f),
+                localDrawColor, deselectedScale, selectedScale);
 
-            foreach (var site in modPlayer.DiscoveredSitesOfGrace)
+            if (isHovered)
             {
-                bool withinX = pylonPos.X >= site.X && pylonPos.X <= site.X + 2;
-                bool withinY = pylonPos.Y >= site.Y && pylonPos.Y <= site.Y + 2;
-
-                if (withinX && withinY)
-                {
-                    Vector2 position = new Vector2(site.X + 1.5f, site.Y + 1.5f);
-
-                    bool isHovered = context.Draw(
-                        mapIcon.Value,
-                        position,
-                        drawColor,
-                        new SpriteFrame(1, 1),
-                        deselectedScale,
-                        selectedScale,
-                        Terraria.UI.Alignment.Center
-                    ).IsMouseOver;
-
-                    float baseScale = isHovered ? 0.8f : 0.6f;
-                    float scale = baseScale;
-
-                    if (Main.mapFullscreen)
-                    {
-                        scale *= MathHelper.Lerp(1f, 0.3f, (Main.mapFullscreenScale - 0.4f) / 2f);
-                    }
-                    else
-                    {
-                        scale *= 0.5f;
-                    }
-
-                    if (isHovered)
-                    {
-                        mouseOverText = "Site of Grace";
-                        DefaultMapClickHandle(isHovered, pylonInfo, "Site of Grace", ref mouseOverText);
-                    }
-
-                    return;
-                }
+                mouseOverText = "Site of Grace";
+                DefaultMapClickHandle(isHovered, pylonInfo, "Site of Grace", ref mouseOverText);
             }
         }
 
@@ -241,6 +203,23 @@ namespace TerraRing.Tiles
             return true;
         }
 
+        public override bool HasSmartInteract(int i, int j, SmartInteractScanSettings settings)
+        {
+            return true;
+        }
+
+        public override void ValidTeleportCheck_DestinationPostCheck(TeleportPylonInfo destinationPylonInfo, ref bool destinationPylonValid, ref string errorKey)
+        {
+            destinationPylonValid = true;
+            errorKey = "";
+        }
+
+        public override void ValidTeleportCheck_NearbyPostCheck(TeleportPylonInfo nearbyPylonInfo, ref bool destinationPylonValid, ref bool anyNearbyValidPylon, ref string errorKey)
+        {
+            destinationPylonValid = true;
+            anyNearbyValidPylon = true;
+        }
+
         public override bool ValidTeleportCheck_NPCCount(TeleportPylonInfo pylonInfo, int defaultNecessaryNPCCount)
         {
             return true;
@@ -256,6 +235,15 @@ namespace TerraRing.Tiles
             return true;
         }
 
+        private bool Player_InInteractionRange(On_Player.orig_InInteractionRange orig, Player self, int interactX, int interactY, TileReachCheckSettings settings)
+        {
+            Tile tile = Main.tile[interactX, interactY];
+            if (tile.TileType == Type)
+                return true;
+
+            return orig(self, interactX, interactY, settings);
+        }
+
         public override void ModifyTeleportationPosition(TeleportPylonInfo destinationPylonInfo, ref Vector2 teleportationPosition)
         {
             teleportationPosition.X += 24f;
@@ -269,18 +257,5 @@ namespace TerraRing.Tiles
                     Scale: Main.rand.NextFloat(1f, 1.5f));
             }
         }
-
-        public override void ValidTeleportCheck_DestinationPostCheck(TeleportPylonInfo destinationPylonInfo, ref bool destinationPylonValid, ref string errorKey)
-        {
-            destinationPylonValid = true;
-        }
-
-        public override void ValidTeleportCheck_NearbyPostCheck(TeleportPylonInfo nearbyPylonInfo, ref bool destinationPylonValid, ref bool anyNearbyValidPylon, ref string errorKey)
-        {
-            anyNearbyValidPylon = true;
-            destinationPylonValid = true;
-        }
-
-        public TeleportPylonType PylonType => TeleportPylonType.SurfacePurity;
     }
 }
