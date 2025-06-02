@@ -280,12 +280,6 @@ namespace TerraRing
         #region Update Logic
         public override void PreUpdate()
         {
-            if (Main.keyState.IsKeyDown(Keys.P) && !Main.oldKeyState.IsKeyDown(Keys.P))
-            {
-                DebugPrintSites();
-            }
-
-
             bool wasAtSiteOfGrace = IsAtSiteOfGrace;
             IsAtSiteOfGrace = false;
 
@@ -314,14 +308,7 @@ namespace TerraRing
                 {
                     MapTravelMode = false;
                     Main.mapFullscreen = false;
-                    Main.mapEnabled = false;
                 }
-            }
-
-            if (!MapTravelMode && Main.mapFullscreen)
-            {
-                Main.mapFullscreen = false;
-                Main.mapEnabled = true;
             }
 
             if (IsRolling)
@@ -915,6 +902,33 @@ namespace TerraRing
             if (!siteExists)
             {
                 DiscoveredSitesOfGrace.Add(position);
+
+                CombatText.NewText(
+                    Player.getRect(),
+                    new Color(255, 207, 107),
+                    "Site of Grace discovered",
+                    true,
+                    true
+                );
+
+                SoundEngine.PlaySound(SoundID.Item4 with { Volume = 0.5f, Pitch = 0.2f });
+
+                for (int i = 0; i < 50; i++)
+                {
+                    Vector2 dustPos = position.ToVector2() * 16;
+                    Vector2 speed = Main.rand.NextVector2Circular(8f, 8f);
+                    Dust.NewDust(
+                        dustPos,
+                        32,
+                        32,
+                        DustID.GoldFlame,
+                        speed.X,
+                        speed.Y,
+                        0,
+                        default,
+                        1.5f
+                    );
+                }
             }
         }
 

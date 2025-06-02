@@ -50,9 +50,6 @@ namespace TerraRing.Tiles
 
             AnimationFrameHeight = 54;
             DustType = -1;
-
-            Main.tileNoAttach[Type] = true;
-            Main.tileNoSunLight[Type] = true;
         }
 
         public override void MouseOver(int i, int j)
@@ -82,6 +79,11 @@ namespace TerraRing.Tiles
             }
 
             modPlayer.DiscoverSiteOfGrace(new Point(left, top));
+
+            if (Main.playerInventory)
+            {
+                Main.playerInventory = false;
+            }
 
             TerraRingUI.Instance.ShowSiteOfGraceUI();
             return true;
@@ -119,8 +121,8 @@ namespace TerraRing.Tiles
             {
                 float intensity = Main.rand.Next(28, 42) * 0.005f + (270 - Main.mouseTextColor) / 700f;
                 r = 1f + intensity;
-                g = 0.3f + intensity;
-                b = 0.0f + intensity;
+                g = 0.8f + intensity;
+                b = 0.3f + intensity;
             }
         }
 
@@ -144,13 +146,8 @@ namespace TerraRing.Tiles
 
             foreach (var site in modPlayer.DiscoveredSitesOfGrace)
             {
-                Main.NewText($"Checking site at: {site.X}, {site.Y}", Color.Yellow);
-
                 bool withinX = pylonPos.X >= site.X && pylonPos.X <= site.X + 2;
                 bool withinY = pylonPos.Y >= site.Y && pylonPos.Y <= site.Y + 2;
-
-                Main.NewText($"X bounds check: {site.X} <= {pylonPos.X} <= {site.X + 2}: {withinX}");
-                Main.NewText($"Y bounds check: {site.Y} <= {pylonPos.Y} <= {site.Y + 2}: {withinY}");
 
                 if (withinX && withinY)
                 {
@@ -166,6 +163,18 @@ namespace TerraRing.Tiles
                         Terraria.UI.Alignment.Center
                     ).IsMouseOver;
 
+                    float baseScale = isHovered ? 0.8f : 0.6f;
+                    float scale = baseScale;
+
+                    if (Main.mapFullscreen)
+                    {
+                        scale *= MathHelper.Lerp(1f, 0.3f, (Main.mapFullscreenScale - 0.4f) / 2f);
+                    }
+                    else
+                    {
+                        scale *= 0.5f;
+                    }
+
                     if (isHovered)
                     {
                         mouseOverText = "Site of Grace";
@@ -174,9 +183,57 @@ namespace TerraRing.Tiles
                     return;
                 }
             }
-
         }
 
+        public override void RandomUpdate(int i, int j)
+        {
+            if (Main.rand.NextBool(2))
+            {
+                CreateAmbientParticle(i, j);
+            }
+        }
+
+        public override void NearbyEffects(int i, int j, bool closer)
+        {
+            if (closer && Main.rand.NextBool(15))
+            {
+                CreateAmbientParticle(i, j);
+            }
+        }
+
+        private void CreateAmbientParticle(int i, int j)
+        {
+            int left = i - (Main.tile[i, j].TileFrameX / 18);
+            int top = j - (Main.tile[i, j].TileFrameY / 18);
+
+            Vector2 center = new Vector2((left + 1.5f) * 16, (top + 1.5f) * 16);
+
+            Vector2 dustPos = center + Main.rand.NextVector2Circular(24f, 24f);
+
+            Vector2 velocity = new Vector2(
+                Main.rand.NextFloat(-0.3f, 0.3f),
+                Main.rand.NextFloat(-0.5f, -0.1f)
+            );
+
+            int dustType = Main.rand.NextFromList(
+                DustID.GoldFlame,
+                DustID.GoldCoin,
+                DustID.GoldCoin
+            );
+
+            Dust dust = Dust.NewDustPerfect(
+                dustPos,
+                dustType,
+                velocity,
+                0,
+                new Color(255, 207, 107) * 0.6f,
+                Main.rand.NextFloat(0.3f, 0.5f)
+            );
+
+            dust.noGravity = true;
+            dust.noLight = false;
+            dust.fadeIn = 1.2f;
+        }
 
         public override bool CanPlacePylon()
         {

@@ -19,32 +19,28 @@ namespace TerraRing.Systems
     {
         public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
         {
-            int mapLayer = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Map"));
+            int mapLayer = layers.FindIndex(layer => layer.Name.Equals("Vanilla: Map / Minimap"));
             if (mapLayer != -1)
             {
                 layers.Insert(mapLayer + 1, new LegacyGameInterfaceLayer(
                     "TerraRing: Map Icons",
                     delegate
                     {
-                        if (Main.mapFullscreen)
+                        if (Main.mapEnabled)
                         {
-                            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
-                            if (modPlayer.MapTravelMode)
-                            {
-                                Main.spriteBatch.End();
-                                Main.spriteBatch.Begin(SpriteSortMode.Deferred,
-                                    BlendState.AlphaBlend,
-                                    Main.DefaultSamplerState,
-                                    DepthStencilState.None,
-                                    RasterizerState.CullNone,
-                                    null,
-                                    Main.GameViewMatrix.TransformationMatrix);
+                            Main.spriteBatch.End();
+                            Main.spriteBatch.Begin(SpriteSortMode.Deferred,
+                                BlendState.AlphaBlend,
+                                Main.DefaultSamplerState,
+                                DepthStencilState.None,
+                                RasterizerState.CullNone,
+                                null,
+                                Main.GameViewMatrix.TransformationMatrix);
 
-                                DrawMapIcons();
+                            DrawMapIcons();
 
-                                Main.spriteBatch.End();
-                                Main.spriteBatch.Begin();
-                            }
+                            Main.spriteBatch.End();
+                            Main.spriteBatch.Begin();
                         }
                         return true;
                     },
@@ -57,37 +53,45 @@ namespace TerraRing.Systems
         {
             var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
 
-            if (!Main.mapFullscreen || !modPlayer.MapTravelMode) return;
-
-            var iconTexture = ModContent.Request<Texture2D>("TerraRing/Items/Placeables/SiteOfGrace").Value;
-
             foreach (Point site in modPlayer.DiscoveredSitesOfGrace)
             {
                 Vector2 mapPosition = new Vector2(site.X, site.Y) * 16;
+                Vector2 screenPosition;
 
-                Vector2 screenPosition = (mapPosition - Main.mapFullscreenPos) * Main.mapFullscreenScale + new Vector2(Main.screenWidth / 2, Main.screenHeight / 2);
+                if (Main.mapFullscreen)
+                {
+                    screenPosition = (mapPosition - Main.mapFullscreenPos) * Main.mapFullscreenScale + new Vector2(Main.screenWidth / 2, Main.screenHeight / 2);
+                }
+                else
+                {
+                    float minimapScale = 5f;
+                    screenPosition = (mapPosition - Main.LocalPlayer.position) / minimapScale;
+                    screenPosition += new Vector2(Main.miniMapX + Main.miniMapWidth / 2, Main.miniMapY + Main.miniMapHeight / 2);
+                }
 
                 Rectangle mouseRect = new Rectangle(Main.mouseX - 5, Main.mouseY - 5, 10, 10);
                 Rectangle iconRect = new Rectangle((int)screenPosition.X - 8, (int)screenPosition.Y - 8, 16, 16);
                 bool isHovered = mouseRect.Intersects(iconRect);
 
-                float scale = isHovered ? 1.2f : 1f;
-                Color color = isHovered ? Color.Gold : Color.Yellow;
-                float rotation = Main.GameUpdateCount * 0.1f;
+                float scale = isHovered ? 0.8f : 0.6f;
+                if (!Main.mapFullscreen) scale *= 0.5f;
 
+                Color color = isHovered ? Color.Gold : Color.Yellow;
+
+                var iconTexture = ModContent.Request<Texture2D>("TerraRing/Items/Placeables/SiteOfGrace").Value;
                 Main.spriteBatch.Draw(
                     iconTexture,
                     screenPosition,
                     null,
-                    color,
-                    rotation,
+                    color * (Main.mapFullscreen ? 1f : 0.9f),
+                    Main.GameUpdateCount * 0.1f,
                     new Vector2(iconTexture.Width / 2f, iconTexture.Height / 2f),
-                    scale * Main.mapFullscreenScale * 0.5f,
+                    scale * (Main.mapFullscreen ? Main.mapFullscreenScale : 1f) * 0.5f,
                     SpriteEffects.None,
                     0f
                 );
 
-                if (isHovered)
+                if (isHovered && Main.mapFullscreen)
                 {
                     Utils.DrawBorderString(
                         Main.spriteBatch,
@@ -99,7 +103,7 @@ namespace TerraRing.Systems
                         0.5f
                     );
 
-                    if (Main.mouseLeft && Main.mouseLeftRelease)
+                    if (Main.mouseLeft && Main.mouseLeftRelease && modPlayer.MapTravelMode)
                     {
                         modPlayer.TravelToSite(site);
                     }
