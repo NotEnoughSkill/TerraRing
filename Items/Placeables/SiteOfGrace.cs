@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria.ID;
 using Terraria.ModLoader;
+using TerraRing.Tiles;
 
 namespace TerraRing.Items.Placeables
 {
@@ -24,6 +25,7 @@ namespace TerraRing.Items.Placeables
             Item.value = 50000;
             Item.rare = ItemRarityID.Orange;
             Item.createTile = ModContent.TileType<Tiles.SiteOfGraceTile>();
+            Item.DefaultToPlaceableTile(ModContent.TileType<SiteOfGraceTile>());
         }
     }
 }

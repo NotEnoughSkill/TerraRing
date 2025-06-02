@@ -178,6 +178,7 @@ namespace TerraRing.Tiles
                     if (isHovered)
                     {
                         mouseOverText = "Site of Grace";
+                        DefaultMapClickHandle(isHovered, pylonInfo, "Site of Grace", ref mouseOverText);
                     }
 
                     return;
@@ -237,26 +238,49 @@ namespace TerraRing.Tiles
 
         public override bool CanPlacePylon()
         {
-            Main.NewText("CanPlacePylon called", Color.Yellow);
             return true;
         }
 
         public override bool ValidTeleportCheck_NPCCount(TeleportPylonInfo pylonInfo, int defaultNecessaryNPCCount)
         {
-            Main.NewText("ValidTeleportCheck_NPCCount called", Color.Yellow);
             return true;
         }
 
         public override bool ValidTeleportCheck_BiomeRequirements(TeleportPylonInfo pylonInfo, SceneMetrics sceneData)
         {
-            Main.NewText("ValidTeleportCheck_BiomeRequirements called", Color.Yellow);
             return true;
         }
 
         public override bool ValidTeleportCheck_AnyDanger(TeleportPylonInfo pylonInfo)
         {
-            Main.NewText("ValidTeleportCheck_AnyDanger called", Color.Yellow);
             return true;
         }
+
+        public override void ModifyTeleportationPosition(TeleportPylonInfo destinationPylonInfo, ref Vector2 teleportationPosition)
+        {
+            teleportationPosition.X += 24f;
+            teleportationPosition.Y -= 32f;
+
+            for (int i = 0; i < 50; i++)
+            {
+                Dust.NewDust(teleportationPosition, 16, 16, DustID.GoldFlame,
+                    Main.rand.NextFloat(-2f, 2f),
+                    Main.rand.NextFloat(-2f, 0f),
+                    Scale: Main.rand.NextFloat(1f, 1.5f));
+            }
+        }
+
+        public override void ValidTeleportCheck_DestinationPostCheck(TeleportPylonInfo destinationPylonInfo, ref bool destinationPylonValid, ref string errorKey)
+        {
+            destinationPylonValid = true;
+        }
+
+        public override void ValidTeleportCheck_NearbyPostCheck(TeleportPylonInfo nearbyPylonInfo, ref bool destinationPylonValid, ref bool anyNearbyValidPylon, ref string errorKey)
+        {
+            anyNearbyValidPylon = true;
+            destinationPylonValid = true;
+        }
+
+        public TeleportPylonType PylonType => TeleportPylonType.SurfacePurity;
     }
 }

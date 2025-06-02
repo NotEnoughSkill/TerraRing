@@ -43,7 +43,11 @@ UI: {
 
 Tiles: {
 	RoundtableExitTile.MapEntry: Roundtable Exit Tile
-	SiteOfGraceTile.MapEntry: Site Of Grace Tile
+
+	SiteOfGraceTile: {
+		MapEntry: Site Of Grace Tile
+		$parentVal: Site of Grace
+	}
 }
 
 MapObject.SiteOfGraceTile: Site of Grace

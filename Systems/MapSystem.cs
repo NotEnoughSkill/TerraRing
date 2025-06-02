@@ -53,6 +53,12 @@ namespace TerraRing.Systems
         {
             var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
 
+            Vector2 mouseWorld = Vector2.Zero;
+            if (Main.mapFullscreen)
+            {
+                mouseWorld = Main.mapFullscreenPos + new Vector2(Main.mouseX - Main.screenWidth / 2, Main.mouseY - Main.screenHeight / 2) / Main.mapFullscreenScale;
+            }
+
             foreach (Point site in modPlayer.DiscoveredSitesOfGrace)
             {
                 Vector2 mapPosition = new Vector2(site.X, site.Y) * 16;
@@ -73,8 +79,17 @@ namespace TerraRing.Systems
                 Rectangle iconRect = new Rectangle((int)screenPosition.X - 8, (int)screenPosition.Y - 8, 16, 16);
                 bool isHovered = mouseRect.Intersects(iconRect);
 
-                float scale = isHovered ? 0.8f : 0.6f;
-                if (!Main.mapFullscreen) scale *= 0.5f;
+                float baseScale = isHovered ? 0.8f : 0.6f;
+                float scale = baseScale;
+
+                if (Main.mapFullscreen)
+                {
+                    scale *= MathHelper.Lerp(1f, 0.3f, (Main.mapFullscreenScale - 0.4f) / 2f);
+                }
+                else
+                {
+                    scale *= 0.5f;
+                }
 
                 Color color = isHovered ? Color.Gold : Color.Yellow;
 
@@ -86,7 +101,7 @@ namespace TerraRing.Systems
                     color * (Main.mapFullscreen ? 1f : 0.9f),
                     Main.GameUpdateCount * 0.1f,
                     new Vector2(iconTexture.Width / 2f, iconTexture.Height / 2f),
-                    scale * (Main.mapFullscreen ? Main.mapFullscreenScale : 1f) * 0.5f,
+                    scale,
                     SpriteEffects.None,
                     0f
                 );
@@ -106,6 +121,16 @@ namespace TerraRing.Systems
                     if (Main.mouseLeft && Main.mouseLeftRelease && modPlayer.MapTravelMode)
                     {
                         modPlayer.TravelToSite(site);
+                        Main.mapFullscreen = false;
+                        modPlayer.MapTravelMode = false;
+                        SoundEngine.PlaySound(SoundID.Item6);
+
+                        for (int i = 0; i < 50; i++)
+                        {
+                            Vector2 dustPosition = new Vector2(site.X * 16 + 24, site.Y * 16 + 24);
+                            Dust.NewDust(dustPosition, 32, 32, DustID.GoldFlame,
+                                Scale: Main.rand.NextFloat(1f, 1.5f));
+                        }
                     }
                 }
             }
