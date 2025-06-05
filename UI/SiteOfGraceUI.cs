@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terraria;
 using Terraria.Audio;
+using Terraria.GameContent;
 using Terraria.GameContent.UI.Elements;
 using Terraria.ID;
 using Terraria.ModLoader;
@@ -18,55 +19,59 @@ namespace TerraRing.UI
     internal class SiteOfGraceUI : UIState
     {
         private UIPanel mainPanel;
+        private UIText passTimeButton;
         private UIText levelUpButton;
-        private UIText restButton;
-        private UIText travelButton;
+        private UIText leaveButton;
+
         private Color defaultColor = new Color(255, 255, 255);
         private Color hoverColor = new Color(255, 207, 107);
 
         public override void OnInitialize()
         {
             mainPanel = new UIPanel();
-            mainPanel.Width.Set(300f, 0f);
-            mainPanel.Height.Set(200f, 0f);
-            mainPanel.HAlign = 0.5f;
-            mainPanel.VAlign = 0.5f;
-            mainPanel.BackgroundColor = new Color(73, 94, 171) * 0.85f;
+            mainPanel.Width.Set(320f, 0f);
+            mainPanel.Height.Set(180f, 0f);
+            mainPanel.Left.Set(60f, 0f);
+            mainPanel.Top.Set(140f, 0f);
+            mainPanel.BackgroundColor = new Color(0, 0, 0) * 0.7f;
+            mainPanel.BorderColor = Color.Transparent;
 
-            levelUpButton = new UIText("Level Up", 1.1f);
-            levelUpButton.HAlign = 0.5f;
-            levelUpButton.Top.Set(50f, 0f);
-            levelUpButton.OnMouseOver += (evt, element) => levelUpButton.TextColor = hoverColor;
-            levelUpButton.OnMouseOut += (evt, element) => levelUpButton.TextColor = defaultColor;
+            var title = new UIText("Site of Grace", 1.2f, false);
+            title.Left.Set(18f, 0f);
+            title.Top.Set(16f, 0f);
+            mainPanel.Append(title);
+
+            passTimeButton = new UIText("Pass time", 1.1f, false);
+            passTimeButton.Left.Set(36f, 0f);
+            passTimeButton.Top.Set(56f, 0f);
+            passTimeButton.TextColor = defaultColor;
+            passTimeButton.OnMouseOver += (evt, el) => passTimeButton.TextColor = hoverColor;
+            passTimeButton.OnMouseOut += (evt, el) => passTimeButton.TextColor = defaultColor;
+            passTimeButton.OnLeftClick += PassTimeClick;
+            mainPanel.Append(passTimeButton);
+
+            levelUpButton = new UIText("Level Up", 1.1f, false);
+            levelUpButton.Left.Set(36f, 0f);
+            levelUpButton.Top.Set(56f + 38f, 0f);
+            levelUpButton.TextColor = defaultColor;
+            levelUpButton.OnMouseOver += (evt, el) => levelUpButton.TextColor = hoverColor;
+            levelUpButton.OnMouseOut += (evt, el) => levelUpButton.TextColor = defaultColor;
             levelUpButton.OnLeftClick += LevelUpClick;
             mainPanel.Append(levelUpButton);
 
-            restButton = new UIText("Rest", 1.1f);
-            restButton.HAlign = 0.5f;
-            restButton.Top.Set(90f, 0f);
-            restButton.OnMouseOver += (evt, element) => restButton.TextColor = hoverColor;
-            restButton.OnMouseOut += (evt, element) => restButton.TextColor = defaultColor;
-            restButton.OnLeftClick += RestClick;
-            mainPanel.Append(restButton);
-
-            travelButton = new UIText("Travel", 1.1f);
-            travelButton.HAlign = 0.5f;
-            travelButton.Top.Set(130f, 0f);
-            travelButton.OnMouseOver += (evt, element) => travelButton.TextColor = hoverColor;
-            travelButton.OnMouseOut += (evt, element) => travelButton.TextColor = defaultColor;
-            travelButton.OnLeftClick += TravelClick;
-            mainPanel.Append(travelButton);
+            leaveButton = new UIText("Leave", 1.1f, false);
+            leaveButton.Left.Set(36f, 0f);
+            leaveButton.Top.Set(56f + 38f * 2, 0f);
+            leaveButton.TextColor = defaultColor;
+            leaveButton.OnMouseOver += (evt, el) => leaveButton.TextColor = hoverColor;
+            leaveButton.OnMouseOut += (evt, el) => leaveButton.TextColor = defaultColor;
+            leaveButton.OnLeftClick += LeaveClick;
+            mainPanel.Append(leaveButton);
 
             Append(mainPanel);
         }
 
-        private void LevelUpClick(UIMouseEvent evt, UIElement listeningElement)
-        {
-            SoundEngine.PlaySound(SoundID.MenuTick);
-            // TODO: Implement level up menu
-        }
-
-        private void RestClick(UIMouseEvent evt, UIElement listeningElement)
+        private void PassTimeClick(UIMouseEvent evt, UIElement listeningElement)
         {
             Player player = Main.LocalPlayer;
             var modPlayer = player.GetModPlayer<TerraRingPlayer>();
@@ -119,60 +124,30 @@ namespace TerraRing.UI
                     new Color(100, 255, 100),
                     player.statLifeMax2 - player.statLife);
             }
-
-            TerraRingUI.Instance.HideSiteOfGraceUI();
-
-            CombatText.NewText(player.getRect(),
-                new Color(255, 207, 107),
-                "Rested at Site of Grace",
-                true);
-
-            Timer.Start(action: () => {
-                if (modPlayer.IsAtSiteOfGrace)
-                    TerraRingUI.Instance.ShowSiteOfGraceUI();
-            }, delayInFrames: 60);
         }
 
-        private void TravelClick(UIMouseEvent evt, UIElement listeningElement)
+        private void LevelUpClick(UIMouseEvent evt, UIElement listeningElement)
         {
-            if (evt.Target != listeningElement) return;
-
             SoundEngine.PlaySound(SoundID.MenuTick);
+            Main.NewText("Level Up Menu Not Implemented", Color.Orange);
+        }
 
+        private void LeaveClick(UIMouseEvent evt, UIElement listeningElement)
+        {
+            SoundEngine.PlaySound(SoundID.MenuClose);
             TerraRingUI.Instance.HideSiteOfGraceUI();
-
-            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
-            modPlayer.MapTravelMode = true;
-            Main.mapEnabled = true;
-            Main.mapStyle = 1;
-            Main.mapFullscreen = true;
         }
 
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
-            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
 
             if (Main.keyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape) &&
                 !Main.oldKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape))
             {
                 SoundEngine.PlaySound(SoundID.MenuClose);
                 TerraRingUI.Instance.HideSiteOfGraceUI();
-                modPlayer.MapTravelMode = false;
-                Main.mapFullscreen = false;
                 return;
-            }
-        }
-
-        protected override void DrawSelf(SpriteBatch spriteBatch)
-        {
-            base.DrawSelf(spriteBatch);
-            Main.LocalPlayer.mouseInterface = true;
-
-            if (Main.rand.NextBool(10))
-            {
-                Vector2 position = Main.MouseScreen + Main.rand.NextVector2Circular(100f, 100f);
-                Dust.NewDustPerfect(position, DustID.GoldFlame, Vector2.Zero, 200, default, 0.8f);
             }
         }
     }

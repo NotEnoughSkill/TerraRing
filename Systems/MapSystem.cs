@@ -93,19 +93,6 @@ namespace TerraRing.Systems
 
                 Color color = isHovered ? Color.Gold : Color.Yellow;
 
-                var iconTexture = ModContent.Request<Texture2D>("TerraRing/Items/Placeables/SiteOfGrace").Value;
-                Main.spriteBatch.Draw(
-                    iconTexture,
-                    screenPosition,
-                    null,
-                    color * (Main.mapFullscreen ? 1f : 0.9f),
-                    Main.GameUpdateCount * 0.1f,
-                    new Vector2(iconTexture.Width / 2f, iconTexture.Height / 2f),
-                    scale,
-                    SpriteEffects.None,
-                    0f
-                );
-
                 if (isHovered && Main.mapFullscreen)
                 {
                     Utils.DrawBorderString(

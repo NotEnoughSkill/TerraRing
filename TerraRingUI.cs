@@ -65,6 +65,7 @@ namespace TerraRing
         public void HideSiteOfGraceUI()
         {
             SiteOfGraceInterface?.SetState(null);
+            Main.blockInput = false;
         }
 
         public void ShowSiteOfGraceUI()
