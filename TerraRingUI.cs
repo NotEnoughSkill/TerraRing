@@ -156,18 +156,6 @@ namespace TerraRing
                 float scale = isHovered ? 1.2f : 1f;
                 Color color = isHovered ? Color.Gold : Color.Yellow;
 
-                Main.spriteBatch.Draw(
-                    TextureAssets.Star[0].Value,
-                    screenPosition,
-                    null,
-                    color,
-                    Main.GameUpdateCount * 0.1f,
-                    new Vector2(TextureAssets.Star[0].Value.Width / 2f),
-                    scale * 0.5f,
-                    SpriteEffects.None,
-                    0f
-                );
-
                 if (isHovered)
                 {
                     Utils.DrawBorderString(
