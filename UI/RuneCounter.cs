@@ -47,7 +47,7 @@ namespace TerraRing.UI
             if (Main.LocalPlayer != null && !Main.gameMenu)
             {
                 var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
-                string runeDisplay = modPlayer.CurrentRunes.ToString("N0");
+                string runeDisplay = modPlayer.Stats.Runes.ToString("N0");
                 runeText.SetText(runeDisplay);
 
                 UpdatePosition();

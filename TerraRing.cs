@@ -50,7 +50,7 @@ namespace TerraRing
                     {
                         var player = Main.player[playerID];
                         var modPlayer = player.GetModPlayer<TerraRingPlayer>();
-                        modPlayer.CurrentRunes = currentRunes;
+                        modPlayer.Stats.Runes = currentRunes;
                     }
                     break;
 

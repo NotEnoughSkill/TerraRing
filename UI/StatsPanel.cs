@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using rail;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ using Terraria.GameContent;
 using Terraria.ModLoader;
 using Terraria.UI;
 
-namespace TerraRing
+namespace TerraRing.UI
 {
     internal class StatsPanel : ModSystem
     {
@@ -83,12 +84,10 @@ namespace TerraRing
 
             Vector2 currentPos = panelPosition + new Vector2(padding * scale, (padding + 50) * scale);
 
-            DrawStatLine("Level", Main.LocalPlayer.statLifeMax / 20, ref currentPos, scale);
-            currentPos.Y += lineHeight * scale;
+            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
+            DrawStatLine("Level", modPlayer.Stats.Level, ref currentPos, scale);
 
             DrawSectionHeader("Attributes", ref currentPos, scale);
-
-            var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
 
             DrawStatLine("Vigor", modPlayer.Vigor, ref currentPos, scale);
             DrawStatLine("Mind", modPlayer.Mind, ref currentPos, scale);
@@ -163,8 +162,8 @@ namespace TerraRing
                 Main.spriteBatch,
                 FontAssets.MouseText.Value,
                 valueText,
-                position.X + (panelWidth * scale) - (padding * scale) - valueWidth - (40 *
-                scale),
+                position.X + panelWidth * scale - padding * scale - valueWidth - 40 *
+                scale,
                 position.Y,
                 Color.White,
                 Color.Black,

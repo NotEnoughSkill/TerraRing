@@ -22,24 +22,22 @@ namespace TerraRing
     internal class TerraRingPlayer : ModPlayer
     {
         #region Stats
-        public int Vigor;
-        public int Mind;
-        public int Endurance;
-        public int Strength;
-        public int Dexterity;
-        public int Intelligence;
-        public int Faith;
-        public int Arcane;
-
+        public LevelSystem.PlayerStats Stats { get; private set; }
+        public int Vigor => Stats.Stats[LevelSystem.StatType.Vigor];
+        public int Mind => Stats.Stats[LevelSystem.StatType.Mind];
+        public int Endurance => Stats.Stats[LevelSystem.StatType.Endurance];
+        public int Strength => Stats.Stats[LevelSystem.StatType.Strength];
+        public int Dexterity => Stats.Stats[LevelSystem.StatType.Dexterity];
+        public int Intelligence => Stats.Stats[LevelSystem.StatType.Intelligence];
+        public int Faith => Stats.Stats[LevelSystem.StatType.Faith];
+        public int Arcane => Stats.Stats[LevelSystem.StatType.Arcane];
         public float MaxHP => 300 + (40 * Vigor);
         public float MaxFP => 50 + (12 * Mind);
         public float MaxStamina => 80 + (15 * Endurance);
         public float MaxEquipLoad => 30f + (0.5f * Endurance);
-
-        public float CurrentFP;
-        public float CurrentStamina;
-        public float CurrentEquipLoad;
-
+        public float CurrentFP { get; set; }
+        public float CurrentStamina { get; set; }
+        public float CurrentEquipLoad { get; set; }
         #endregion
 
         #region Scaling
@@ -87,7 +85,6 @@ namespace TerraRing
         #endregion
 
         #region Runes
-        public long CurrentRunes { get; set; }
         public long LostRunes { get; set; }
         public Vector2 LostRunesPosition { get; set; }
         public bool HasLostRunes { get; set; }
@@ -126,20 +123,13 @@ namespace TerraRing
         #region Initialization
         public override void Initialize()
         {
-            Vigor = 10;
-            Mind = 10;
-            Endurance = 10;
-            Strength = 10;
-            Dexterity = 10;
-            Intelligence = 10;
-            Faith = 10;
-            Arcane = 10;
+            Stats = new LevelSystem.PlayerStats();
 
             CurrentFP = MaxFP;
             CurrentStamina = MaxStamina;
             CurrentEquipLoad = 0f;
 
-            CurrentRunes = 0;
+            Stats.Runes = 0;
             LostRunes = 0;
             HasLostRunes = false;
             LostRunesPosition = Vector2.Zero;
@@ -199,19 +189,16 @@ namespace TerraRing
         #region Save/Load
         public override void SaveData(TagCompound tag)
         {
-            tag["Vigor"] = Vigor;
-            tag["Mind"] = Mind;
-            tag["Endurance"] = Endurance;
-            tag["Strength"] = Strength;
-            tag["Dexterity"] = Dexterity;
-            tag["Intelligence"] = Intelligence;
-            tag["Faith"] = Faith;
-            tag["Arcane"] = Arcane;
+            foreach (LevelSystem.StatType statType in Enum.GetValues(typeof(LevelSystem.StatType)))
+            {
+                tag[$"Stat_{statType}"] = Stats.Stats[statType];
+            }
+            tag["Level"] = Stats.Level;
 
             tag["AccumuVal"] = accumulatedValue;
             tag["LastHitTime"] = lastHitTime;
 
-            tag["CurrentRunes"] = (long)CurrentRunes;
+            tag["CurrentRunes"] = Stats.Runes;
             tag["LostRunes"] = (long)LostRunes;
             tag["HasLostRunes"] = HasLostRunes;
             tag["LostRunesX"] = LostRunesPosition.X;
@@ -225,20 +212,29 @@ namespace TerraRing
 
         public override void LoadData(TagCompound tag)
         {
-            Vigor = tag.GetInt("Vigor");
-            Mind = tag.GetInt("Mind");
-            Endurance = tag.GetInt("Endurance");
-            Strength = tag.GetInt("Strength");
-            Dexterity = tag.GetInt("Dexterity");
-            Intelligence = tag.GetInt("Intelligence");
-            Faith = tag.GetInt("Faith");
-            Arcane = tag.GetInt("Arcane");
+            if (Stats == null)
+            {
+                Stats = new LevelSystem.PlayerStats();
+            }
+
+            foreach (LevelSystem.StatType statType in Enum.GetValues(typeof(LevelSystem.StatType)))
+            {
+                if (tag.ContainsKey($"Stat_{statType}"))
+                {
+                    Stats.Stats[statType] = tag.GetInt($"Stat_{statType}");
+                }
+            }
+
+            Stats.Level = tag.GetInt("Level");
+            if (tag.ContainsKey("CurrentRunes"))
+            {
+                Stats.Runes = tag.Get<long>("CurrentRunes");
+            }
             HasLostRunes = tag.GetBool("HasLostRunes");
 
             accumulatedValue = tag.GetFloat("AccumuVal");
             lastHitTime = tag.Get<uint>("LastHitTime");
 
-            CurrentRunes = tag.Get<long>("CurrentRunes");
             LostRunes = tag.Get<long>("LostRunes");
             HasLostRunes = tag.GetBool("HasLostRunes");
             LostRunesPosition = new Vector2(
@@ -639,45 +635,6 @@ namespace TerraRing
             return item.rare + 1f;
         }
 
-        public bool TryLevelUp(string stat, int runesCost)
-        {
-            if (CurrentRunes >= runesCost)
-            {
-                switch (stat.ToLower())
-                {
-                    case "vigor":
-                        Vigor++;
-                        break;
-                    case "mind":
-                        Mind++;
-                        break;
-                    case "endurance":
-                        Endurance++;
-                        break;
-                    case "strength":
-                        Strength++;
-                        break;
-                    case "dexterity":
-                        Dexterity++;
-                        break;
-                    case "intelligence":
-                        Intelligence++;
-                        break;
-                    case "faith":
-                        Faith++;
-                        break;
-                    case "arcane":
-                        Arcane++;
-                        break;
-                    default:
-                        return false;
-                }
-                CurrentRunes -= runesCost;
-                return true;
-            }
-            return false;
-        }
-
         public override void ModifyDrawInfo(ref PlayerDrawSet drawInfo)
         {
             if (Main.mapFullscreen)
@@ -700,33 +657,23 @@ namespace TerraRing
         #region Runes Methods
         public void AddRunes(long amount)
         {
-            if (amount > 0)
+            Stats.AddRunes((int)amount);
+            if (Main.netMode != NetmodeID.SinglePlayer)
             {
-                CurrentRunes += amount;
-                if (Main.netMode != NetmodeID.SinglePlayer)
-                {
-                    ModPacket packet = Mod.GetPacket();
-                    packet.Write((byte)MessageType.SyncRunes);
-                    packet.Write(Player.whoAmI);
-                    packet.Write(CurrentRunes);
-                    packet.Send();
-                }
+                ModPacket packet = Mod.GetPacket();
+                packet.Write((byte)MessageType.SyncRunes);
+                packet.Write(Player.whoAmI);
+                packet.Write(Stats.Runes);
+                packet.Send();
             }
         }
 
         public bool SpendRunes(long amount)
         {
-            if (amount <= CurrentRunes)
+            int cost = Stats.CalculateLevelUpCost();
+            if (Stats.Runes >= cost)
             {
-                CurrentRunes -= amount;
-                if (Main.netMode != NetmodeID.SinglePlayer)
-                {
-                    ModPacket packet = Mod.GetPacket();
-                    packet.Write((byte)MessageType.SyncRunes);
-                    packet.Write(Player.whoAmI);
-                    packet.Write(CurrentRunes);
-                    packet.Send();
-                }
+                Stats.Runes -= cost;
                 return true;
             }
             return false;
@@ -734,10 +681,10 @@ namespace TerraRing
 
         public override bool PreKill(double damage, int hitDirection, bool pvp, ref bool playSound, ref bool genDust, ref PlayerDeathReason damageSource)
         {
-            if (CurrentRunes > 0)
+            if (Stats.Runes > 0)
             {
-                LostRunes = CurrentRunes;
-                CurrentRunes = 0;
+                LostRunes = Stats.Runes;
+                Stats.Runes = 0;
                 LostRunesPosition = Player.position;
                 HasLostRunes = true;
                 lastDeathWorld = Main.worldID;

@@ -129,7 +129,7 @@ namespace TerraRing.UI
         private void LevelUpClick(UIMouseEvent evt, UIElement listeningElement)
         {
             SoundEngine.PlaySound(SoundID.MenuTick);
-            Main.NewText("Level Up Menu Not Implemented", Color.Orange);
+            TerraRingUI.Instance.ShowLevelUpUI();
         }
 
         private void LeaveClick(UIMouseEvent evt, UIElement listeningElement)

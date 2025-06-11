@@ -30,6 +30,9 @@ namespace TerraRing
         internal UserInterface SiteOfGraceInterface;
         internal SiteOfGraceUI SiteOfGraceUI;
 
+        internal UserInterface LevelUpInterface;
+        internal LevelUpUI LevelUpUI;
+
         public override void Load()
         {
             Instance = this;
@@ -42,6 +45,10 @@ namespace TerraRing
 
                 SiteOfGraceInterface = new UserInterface();
                 SiteOfGraceUI = new SiteOfGraceUI();
+
+                LevelUpInterface = new UserInterface();
+                LevelUpUI = new LevelUpUI();
+                LevelUpUI.Activate();
             }
         }
 
@@ -51,6 +58,8 @@ namespace TerraRing
             RuneCounter = null;
             SiteOfGraceInterface = null;
             SiteOfGraceUI = null;
+            LevelUpInterface = null;
+            LevelUpUI = null;
         }
 
         public override void UpdateUI(GameTime gameTime)
@@ -59,6 +68,7 @@ namespace TerraRing
             {
                 _runeCounterInterface?.Update(gameTime);
                 SiteOfGraceInterface?.Update(gameTime);
+                LevelUpInterface?.Update(gameTime);
             }
         }
 
@@ -74,6 +84,19 @@ namespace TerraRing
             {
                 SiteOfGraceInterface?.SetState(SiteOfGraceUI);
             }
+        }
+
+        public void ShowLevelUpUI()
+        {
+            if (LevelUpInterface?.CurrentState != LevelUpUI)
+            {
+                LevelUpInterface?.SetState(LevelUpUI);
+            }
+        }
+
+        public void HideLevelUpUI()
+        {
+            LevelUpInterface?.SetState(null);
         }
 
         public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
@@ -97,6 +120,18 @@ namespace TerraRing
                         if (!Main.gameMenu)
                         {
                             _runeCounterInterface.Draw(Main.spriteBatch, new GameTime());
+                        }
+                        return true;
+                    },
+                    InterfaceScaleType.UI));
+
+                layers.Insert(resourceBarIndex + 1, new LegacyGameInterfaceLayer(
+                    "TerraRing: Level Up UI",
+                    delegate
+                    {
+                        if (!Main.gameMenu)
+                        {
+                            LevelUpInterface.Draw(Main.spriteBatch, new GameTime());
                         }
                         return true;
                     },
