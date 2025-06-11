@@ -31,13 +31,35 @@ namespace TerraRing
         public int Intelligence => Stats.Stats[LevelSystem.StatType.Intelligence];
         public int Faith => Stats.Stats[LevelSystem.StatType.Faith];
         public int Arcane => Stats.Stats[LevelSystem.StatType.Arcane];
-        public float MaxHP => 300 + (40 * Vigor);
+        public float MaxHP
+        {
+            get
+            {
+                if (Vigor <= 25)
+                {
+                    return 300f + (40f * Vigor);
+                }
+                else if (Vigor <= 40)
+                {
+                    return 1300f + (30f * (Vigor - 25));
+                }
+                else if (Vigor <= 60)
+                {
+                    return 1750f + (20f * (Vigor - 40));
+                }
+                else
+                {
+                    return 2150f + (10f * (Vigor - 60));
+                }
+            }
+        }
         public float MaxFP => 50 + (12 * Mind);
         public float MaxStamina => 80 + (15 * Endurance);
         public float MaxEquipLoad => 30f + (0.5f * Endurance);
         public float CurrentFP { get; set; }
         public float CurrentStamina { get; set; }
         public float CurrentEquipLoad { get; set; }
+        private float hpModifier = 1f;
         #endregion
 
         #region Scaling
@@ -183,6 +205,29 @@ namespace TerraRing
             {
                 ClearSitesOfGrace();
             }
+        }
+
+        public override void ModifyMaxStats(out StatModifier health, out StatModifier mana)
+        {
+            float baseMaxHP = MaxHP;
+
+            float modifiedHP = (baseMaxHP / 2f) * hpModifier;
+
+            health = StatModifier.Default;
+            health.Base = modifiedHP;
+
+            mana = StatModifier.Default;
+        }
+
+        public void BoostHP(float multiplier)
+        {
+            hpModifier *= multiplier;
+        }
+
+        public override void ResetEffects()
+        {
+            base.ResetEffects();
+            hpModifier = 1f;
         }
         #endregion
 
