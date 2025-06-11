@@ -13,7 +13,6 @@ namespace TerraRing.Signs
     {
         public override string Texture => $"TerraRing/Signs/MessageSign";
 
-        
         public override void SetDefaults()
         {
             Item.DefaultToPlaceableTile(ModContent.TileType<ExampleSign>());
