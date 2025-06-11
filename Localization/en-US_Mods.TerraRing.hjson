@@ -32,6 +32,16 @@ Items: {
 		DisplayName: Site Of Grace
 		Tooltip: ""
 	}
+
+	MessageSignStyle: {
+		DisplayName: Message Sign Style
+		Tooltip: ""
+	}
+
+	TestStyle: {
+		DisplayName: Test Style
+		Tooltip: ""
+	}
 }
 
 UI: {
