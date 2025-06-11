@@ -73,6 +73,17 @@ namespace TerraRing
         public float IntelligenceScaling => 1f + (Intelligence * 0.01f);
         public float FaithScaling => 1f + (Faith * 0.01f);
         public float ArcaneScaling => 1f + (Arcane * 0.01f);
+
+        public enum ScalingGrade
+        {
+            S,
+            A,
+            B,
+            C,
+            D,
+            E,
+            None
+        }
         #endregion
 
         #region Rolling States
@@ -946,6 +957,85 @@ namespace TerraRing
                     packet.Send();
                 }
             }
+        }
+        #endregion
+
+        #region Scaling Methds
+        private float GetScalingMultiplier(ScalingGrade grade) => grade switch
+        {
+            ScalingGrade.S => 1.0f,
+            ScalingGrade.A => 0.85f,
+            ScalingGrade.B => 0.7f,
+            ScalingGrade.C => 0.55f,
+            ScalingGrade.D => 0.4f,
+            ScalingGrade.E => 0.25f,
+            _ => 0f
+        };
+
+        private float CalculateStatScalingBonus(int statValue)
+        {
+            if (statValue <= 20)
+                return statValue * 0.015f;
+            else if (statValue <= 40)
+                return 0.3f + (statValue - 20) * 0.01f;
+            else if (statValue <= 60)
+                return 0.5f + (statValue - 40) * 0.005f;
+            else
+                return 0.6f + (statValue - 60) * 0.002f;
+        }
+
+        public override void ModifyWeaponDamage(Item item, ref StatModifier damage)
+        {
+            var weaponSystem = ModContent.GetInstance<WeaponRequirementSystem>();
+            var scaling = weaponSystem.GetWeaponScaling(item);
+
+            if (!scaling.ContainsKey("Strength") && !scaling.ContainsKey("Dexterity"))
+                return;
+
+            float strengthBonus = CalculateStatScalingBonus(Strength) * GetScalingMultiplier(scaling.GetValueOrDefault("Strength", ScalingGrade.None));
+            float dexterityBonus = CalculateStatScalingBonus(Dexterity) * GetScalingMultiplier(scaling.GetValueOrDefault("Dexterity", ScalingGrade.None));
+
+            float intelligenceBonus = CalculateStatScalingBonus(Intelligence) * GetScalingMultiplier(scaling.GetValueOrDefault("Intelligence", ScalingGrade.None));
+            float faithBonus = CalculateStatScalingBonus(Faith) * GetScalingMultiplier(scaling.GetValueOrDefault("Faith", ScalingGrade.None));
+            float arcaneBonus = CalculateStatScalingBonus(Arcane) * GetScalingMultiplier(scaling.GetValueOrDefault("Arcane", ScalingGrade.None));
+
+            damage *= 1f + strengthBonus + dexterityBonus + intelligenceBonus + faithBonus + arcaneBonus;
+        }
+
+        public override void ModifyWeaponCrit(Item item, ref float crit)
+        {
+            if (item.DamageType.CountsAsClass(DamageClass.Melee) || item.DamageType.CountsAsClass(DamageClass.Ranged))
+            {
+                float dexterityBonus = Math.Min(Dexterity, 40) * 0.5f;
+                crit += dexterityBonus;
+            }
+            else if (item.DamageType.CountsAsClass(DamageClass.Magic))
+            {
+                float intelligenceBonus = Math.Min(Intelligence, 40) * 0.5f;
+                crit += intelligenceBonus;
+            }
+            else if (item.DamageType.CountsAsClass(DamageClass.Summon))
+            {
+                float faithBonus = Math.Min(Faith, 40) * 0.5f;
+                crit += faithBonus;
+            }
+        }
+
+        public override bool CanUseItem(Item item)
+        {
+            var weaponSystem = ModContent.GetInstance<WeaponRequirementSystem>();
+            if (!weaponSystem.IsWeapon(item))
+                return true;
+
+            var requirements = weaponSystem.GetWeaponRequirements(item);
+
+            bool meetsStrength = Strength >= requirements.Str;
+            bool meetsDexterity = Dexterity >= requirements.Dex;
+            bool meetsIntelligence = Intelligence >= requirements.Int;
+            bool meetsFaith = Faith >= requirements.Fth;
+            bool meetsArcane = Arcane >= requirements.Arc;
+
+            return meetsStrength && meetsDexterity && meetsIntelligence && meetsFaith && meetsArcane;
         }
         #endregion
 
