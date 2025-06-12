@@ -117,6 +117,14 @@ namespace TerraRing.UI
                 UpdateLevelInfo(modPlayer);
                 UpdateStatRows(modPlayer);
             }
+
+            if (Main.keyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape) &&
+                !Main.oldKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Escape))
+            {
+                SoundEngine.PlaySound(SoundID.MenuClose);
+                TerraRingUI.Instance.HideLevelUpUI();
+                return;
+            }
         }
 
         private void UpdateLevelInfo(TerraRingPlayer player)

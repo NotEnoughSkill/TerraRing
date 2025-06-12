@@ -183,6 +183,7 @@ namespace TerraRing.Systems
                 : new WeaponScaling(ScalingGrade.E, ScalingGrade.E);
 
             int baseDamage = item.damage;
+            float damageMultiplier = baseDamage / 100f;
 
             int strReq = baseScaling.Strength switch
             {
@@ -206,30 +207,93 @@ namespace TerraRing.Systems
                 _ => 0
             };
 
-            float damageMultiplier = baseDamage / 20f;
-            int intel = 0, faith = 0, arc = 0;
+            switch (item.type)
+            {
+                case ItemID.Zenith:
+                    return (50,
+                           50,
+                           50,
+                           50,
+                           30);
 
-            if (item.DamageType.CountsAsClass(DamageClass.Magic))
-            {
-                intel = (int)(15 * damageMultiplier);
-                arc = (int)(8 * damageMultiplier);
-                strReq = 0;
-                dexReq = 0;
-            }
-            else if (item.DamageType.CountsAsClass(DamageClass.Summon))
-            {
-                faith = (int)(15 * damageMultiplier);
-                arc = (int)(10 * damageMultiplier);
-                strReq = 0;
-                dexReq = 0;
-            }
-            else
-            {
-                strReq = (int)(strReq * damageMultiplier);
-                dexReq = (int)(dexReq * damageMultiplier);
-            }
+                case ItemID.LastPrism:
+                    return (15,
+                           0,
+                           60,
+                           30,
+                           25); 
 
-            return (strReq, dexReq, intel, faith, arc);
+                case ItemID.TerraBlade:
+                case ItemID.InfluxWaver:
+                    return (40,
+                           25,
+                           30,
+                           0,
+                           15);
+
+                case ItemID.DayBreak:
+                case ItemID.SolarEruption:
+                    return (35,
+                           20,
+                           25,
+                           0,
+                           15);
+
+                case ItemID.RainbowRod:
+                case ItemID.NimbusRod:
+                    return (0,
+                           0,
+                           35,
+                           25,
+                           20); 
+
+                case ItemID.EmpressBlade:
+                    return (30,
+                           25,
+                           0,
+                           35,
+                           20);
+
+                case ItemID.VampireKnives:
+                    return (0,
+                           30,
+                           0,
+                           35,
+                           20);
+
+                case ItemID.MagicDagger:
+                    return (20,
+                           0,
+                           35,
+                           0,
+                           15);
+
+                default:
+                    int str = 0, dex = 0, intel = 0, faith = 0, arc = 0;
+
+                    if (item.DamageType.CountsAsClass(DamageClass.Melee))
+                    {
+                        str = Math.Min((int)(20 * damageMultiplier), 40);
+                        dex = Math.Min((int)(15 * damageMultiplier), 25);
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Ranged))
+                    {
+                        dex = Math.Min((int)(20 * damageMultiplier), 40);
+                        str = Math.Min((int)(10 * damageMultiplier), 20);
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Magic))
+                    {
+                        intel = Math.Min((int)(20 * damageMultiplier), 40);
+                        arc = Math.Min((int)(10 * damageMultiplier), 20);
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Summon))
+                    {
+                        faith = Math.Min((int)(20 * damageMultiplier), 40);
+                        arc = Math.Min((int)(15 * damageMultiplier), 25);
+                    }
+
+                    return (str, dex, intel, faith, arc);
+            }
         }
 
         public Dictionary<string, ScalingGrade> GetWeaponScaling(Item item)
@@ -245,20 +309,71 @@ namespace TerraRing.Systems
 
             var baseScaling = WeaponScalingData.TryGetValue(item.type, out var weaponScaling) ? weaponScaling : new WeaponScaling(ScalingGrade.E, ScalingGrade.E);
 
-            if (item.DamageType.CountsAsClass(DamageClass.Melee) || item.DamageType.CountsAsClass(DamageClass.Ranged))
+            switch (item.type)
             {
-                scaling["Strength"] = baseScaling.Strength;
-                scaling["Dexterity"] = baseScaling.Dexterity;
-            }
-            else if (item.DamageType.CountsAsClass(DamageClass.Magic))
-            {
-                scaling["Intelligence"] = ScalingGrade.B;
-                scaling["Arcane"] = ScalingGrade.D;
-            }
-            else if (item.DamageType.CountsAsClass(DamageClass.Summon))
-            {
-                scaling["Faith"] = ScalingGrade.B;
-                scaling["Arcane"] = ScalingGrade.C;
+                case ItemID.TerraBlade:
+                case ItemID.InfluxWaver:
+                case ItemID.DayBreak:
+                case ItemID.SolarEruption:
+                    scaling["Strength"] = ScalingGrade.B;
+                    scaling["Intelligence"] = ScalingGrade.C;
+                    break;
+
+                case ItemID.NorthPole:
+                case ItemID.Frostbrand:
+                    scaling["Strength"] = ScalingGrade.C;
+                    scaling["Intelligence"] = ScalingGrade.C;
+                    scaling["Arcane"] = ScalingGrade.D;
+                    break;
+
+                case ItemID.RainbowRod:
+                case ItemID.NimbusRod:
+                    scaling["Intelligence"] = ScalingGrade.B;
+                    scaling["Faith"] = ScalingGrade.D;
+                    break;
+
+                case ItemID.EmpressBlade:
+                case ItemID.StardustDragonStaff:
+                    scaling["Strength"] = ScalingGrade.D;
+                    scaling["Faith"] = ScalingGrade.A;
+                    break;
+
+                case ItemID.LaserMachinegun:
+                case ItemID.ChargedBlasterCannon:
+                    scaling["Intelligence"] = ScalingGrade.B;
+                    scaling["Dexterity"] = ScalingGrade.C;
+                    break;
+
+                case ItemID.LastPrism:
+                case ItemID.Zenith:
+                    scaling["Strength"] = ScalingGrade.B;
+                    scaling["Intelligence"] = ScalingGrade.B;
+                    scaling["Faith"] = ScalingGrade.B;
+                    scaling["Arcane"] = ScalingGrade.C;
+                    break;
+
+                default:
+                    if (item.DamageType.CountsAsClass(DamageClass.Melee))
+                    {
+                        scaling["Strength"] = item.useTime >= 30 ? ScalingGrade.B : ScalingGrade.D;
+                        scaling["Dexterity"] = item.useTime <= 20 ? ScalingGrade.C : ScalingGrade.E;
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Ranged))
+                    {
+                        scaling["Dexterity"] = ScalingGrade.C;
+                        scaling["Strength"] = ScalingGrade.E;
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Magic))
+                    {
+                        scaling["Intelligence"] = ScalingGrade.B;
+                        scaling["Arcane"] = ScalingGrade.D;
+                    }
+                    else if (item.DamageType.CountsAsClass(DamageClass.Summon))
+                    {
+                        scaling["Faith"] = ScalingGrade.B;
+                        scaling["Arcane"] = ScalingGrade.C;
+                    }
+                    break;
             }
 
             return scaling;
@@ -285,6 +400,11 @@ namespace TerraRing.Systems
             }
 
             return true;
+        }
+
+        private int ClampStatRequirement(int requirement)
+        {
+            return Math.Min(requirement, 99);
         }
     }
 }

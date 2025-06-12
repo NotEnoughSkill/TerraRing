@@ -11,6 +11,9 @@ namespace TerraRing.Systems
     {
         public class PlayerStats
         {
+            public const int MAX_STAT_VALUE = 99;
+            public const int MAX_LEVEL = 713;
+
             public int Level { get; set; } = 1;
             public long Runes { get; set; } = 0;
             public Dictionary<StatType, int> Stats { get; private set; }
@@ -37,11 +40,21 @@ namespace TerraRing.Systems
 
             public bool TryLevelUpStat(StatType stat)
             {
+                if (Level >= MAX_LEVEL)
+                {
+                    return false;
+                }
+
+                if (Stats[stat] >= MAX_STAT_VALUE)
+                {
+                    return false;
+                }
+
                 int cost = CalculateLevelUpCost();
                 if (Runes >= cost)
                 {
                     Runes -= cost;
-                    Stats[stat]++;
+                    Stats[stat] = Math.Min(Stats[stat] + 1, MAX_STAT_VALUE);
                     Level++;
                     return true;
                 }
