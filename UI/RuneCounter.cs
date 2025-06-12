@@ -1,5 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using ReLogic.Content;
+using ReLogic.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +11,7 @@ using Terraria;
 using Terraria.GameContent;
 using Terraria.GameContent.UI.Elements;
 using Terraria.Localization;
+using Terraria.ModLoader;
 using Terraria.UI;
 using Terraria.UI.Chat;
 
@@ -16,47 +19,105 @@ namespace TerraRing.UI
 {
     internal class RuneCounter : UIState
     {
-        private UIText runeText;
-        private const float PADDING = 50f;
-        private const float SCALE = 1.2f;
+        private Vector2 position;
+        private Asset<Texture2D> runeIcon;
+        private bool visible = true;
 
         public override void OnInitialize()
         {
-            runeText = new UIText("0", SCALE);
-            runeText.Width.Set(200, 0f);
-            runeText.Height.Set(30, 0f);
-
-            UpdatePosition();
-
-            Append(runeText);
+            runeIcon = ModContent.Request<Texture2D>("TerraRing/UI/RuneIcon");
+            position = new Vector2(Main.screenWidth - 200, Main.screenHeight - 50);
         }
 
-        private void UpdatePosition()
+        public override void Draw(SpriteBatch spriteBatch)
         {
-            if (runeText != null)
-            {
-                runeText.Left.Set(Main.screenWidth - 200 - PADDING, 0f);
-                runeText.Top.Set(Main.screenHeight - 20 - PADDING, 0f);
-            }
-        }
+            if (!visible) return;
 
-        public override void Update(GameTime gameTime)
-        {
-            base.Update(gameTime);
+            var player = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
+            string runeCount = player.Stats.Runes.ToString("N0");
 
-            if (Main.LocalPlayer != null && !Main.gameMenu)
-            {
-                var modPlayer = Main.LocalPlayer.GetModPlayer<TerraRingPlayer>();
-                string runeDisplay = modPlayer.Stats.Runes.ToString("N0");
-                runeText.SetText(runeDisplay);
+            if (runeIcon?.Value == null) return;
 
-                UpdatePosition();
+            Vector2 textSize = FontAssets.MouseText.Value.MeasureString(runeCount);
+            float desiredIconHeight = textSize.Y * 0.9f;
 
-                if (runeText.IsMouseHovering)
-                {
-                    Main.instance.MouseText("Runes");
-                }
-            }
+            float iconScale = desiredIconHeight / runeIcon.Value.Height;
+            int scaledIconWidth = (int)(runeIcon.Value.Width * iconScale);
+            int scaledIconHeight = (int)(runeIcon.Value.Height * iconScale);
+
+            int verticalPadding = 8;
+            int horizontalPadding = 12;
+            int bottomMargin = 25;
+            int rightMargin = 20; 
+
+            int totalWidth = (int)textSize.X + scaledIconWidth + (horizontalPadding * 2 + 10);
+            int totalHeight = Math.Max(scaledIconHeight, (int)textSize.Y) + (verticalPadding * 2);
+
+            position = new Vector2(
+                Main.screenWidth - totalWidth - rightMargin,
+                Main.screenHeight - totalHeight - bottomMargin
+            );
+
+            Rectangle backgroundRect = new Rectangle(
+                (int)position.X,
+                (int)position.Y,
+                totalWidth,
+                totalHeight
+            );
+
+            spriteBatch.Draw(TextureAssets.MagicPixel.Value, backgroundRect, null, new Color(0, 0, 0, 180));
+
+            int borderWidth = 2;
+            Color borderColor = new Color(255, 207, 107);
+
+            spriteBatch.Draw(TextureAssets.MagicPixel.Value,
+                new Rectangle(backgroundRect.X, backgroundRect.Y, backgroundRect.Width, borderWidth),
+                borderColor);
+            spriteBatch.Draw(TextureAssets.MagicPixel.Value,
+                new Rectangle(backgroundRect.X, backgroundRect.Y + backgroundRect.Height - borderWidth, backgroundRect.Width, borderWidth),
+                borderColor);
+            spriteBatch.Draw(TextureAssets.MagicPixel.Value,
+                new Rectangle(backgroundRect.X, backgroundRect.Y, borderWidth, backgroundRect.Height),
+                borderColor);
+            spriteBatch.Draw(TextureAssets.MagicPixel.Value,
+                new Rectangle(backgroundRect.X + backgroundRect.Width - borderWidth, backgroundRect.Y, borderWidth, backgroundRect.Height),
+                borderColor);
+
+            Vector2 iconPosition = new Vector2(
+                position.X + horizontalPadding,
+                position.Y + (totalHeight - scaledIconHeight) / 2
+            );
+
+            spriteBatch.Draw(
+                runeIcon.Value,
+                iconPosition,
+                null,
+                Color.White,
+                0f,
+                Vector2.Zero,
+                iconScale,
+                SpriteEffects.None,
+                0f
+            );
+
+            Vector2 textPosition = new Vector2(
+                iconPosition.X + scaledIconWidth + 10,
+                position.Y + (totalHeight - textSize.Y) / 2
+            );
+
+            spriteBatch.DrawString(
+                FontAssets.MouseText.Value,
+                runeCount,
+                textPosition + new Vector2(2, 2),
+                Color.Black * 0.5f
+            );
+
+            spriteBatch.DrawString(
+                FontAssets.MouseText.Value,
+                runeCount,
+                textPosition,
+                new Color(255, 236, 179)
+            );
         }
     }
 }
