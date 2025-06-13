@@ -89,7 +89,7 @@ namespace TerraRing
         #region Rolling States
         public bool IsRolling;
         public int RollTimer;
-        private const int ROLL_DURATION = 30;
+        private const int ROLL_DURATION = 20;
         public int RollDirection = 1;
         public double Rotation = 0f;
         public int IFrames = 0;
@@ -98,15 +98,14 @@ namespace TerraRing
         public Vector2 RotationOrigin;
         private int staminaRegenDelay = 0;
         private const int STAMINA_REGEN_COOLDOWN = 60;
-        private const float MAX_ROLL_ROTATION = MathHelper.TwoPi;
 
         private const float LIGHT_ROLL_DISTANCE = 1.4f;
         private const float MEDIUM_ROLL_DISTANCE = 1.0f;
         private const float HEAVY_ROLL_DISTANCE = 0.7f;
 
-        private const int LIGHT_ROLL_IFRAMES = 15;
-        private const int MEDIUM_ROLL_IFRAMES = 10;
-        private const int HEAVY_ROLL_IFRAMES = 6;
+        private const int LIGHT_ROLL_IFRAMES = 5;
+        private const int MEDIUM_ROLL_IFRAMES = 3;
+        private const int HEAVY_ROLL_IFRAMES = 1;
         #endregion
 
         #region AccumuVal
@@ -459,28 +458,19 @@ namespace TerraRing
                     UpdateRollRotation();
                     HandleRollMovement();
 
-                    if (CurrentLoadState == EquipLoadState.Heavy && RollTimer < 10)
+                    if (IFrames > 0)
                     {
-                        Player.velocity.X *= 0.92f;
+                        Player.immune = true;
+                        if (Player.immuneTime < IFrames)
+                        {
+                            Player.immuneTime = IFrames;
+                        }
                     }
                 }
                 else
                 {
                     EndRoll();
                 }
-
-                if (IFrames > 0)
-                {
-                    Player.immune = true;
-                    if (Player.immuneTime < IFrames)
-                    {
-                        Player.immuneTime = IFrames;
-                    }
-                }
-            }
-            else
-            {
-                RollTimer = ROLL_DURATION;
             }
         }
 
@@ -488,30 +478,16 @@ namespace TerraRing
         {
             float rollProgress = 1f - (float)RollTimer / ROLL_DURATION;
 
-            float targetRotation = MAX_ROLL_ROTATION * RollDirection;
-            float smoothedProgress = (float)Math.Pow(Math.Sin(rollProgress * MathHelper.PiOver2), 0.75);
-            Rotation = targetRotation * smoothedProgress * Player.gravDir;
+            Player.fullRotationOrigin = new Vector2(Player.width / 2f, Player.height / 2f);
 
-            RotationOrigin = Player.Center - new Vector2(0, Player.height / 4) - Player.position;
-            if (Player.gravDir < 0)
-            {
-                RotationOrigin = Player.Center - new Vector2(0, Player.height * 0.8f) - Player.position;
-            }
+            Player.fullRotation = RollDirection * MathHelper.TwoPi * rollProgress;
         }
 
         private void HandleRollMovement()
         {
-            int originalHeight = Player.height;
-
-            Player.height = (int)(Player.height * 0.6f);
-
-            Player.position.Y += originalHeight - Player.height;
-
-            Player.fullRotation = (float)Rotation;
-            Player.fullRotationOrigin = RotationOrigin;
+            Player.direction = RollDirection;
 
             float baseSpeed = Math.Max(6f, Player.maxRunSpeed);
-
             float distanceMultiplier = CurrentLoadState switch
             {
                 EquipLoadState.Light => LIGHT_ROLL_DISTANCE,
@@ -520,40 +496,17 @@ namespace TerraRing
                 _ => MEDIUM_ROLL_DISTANCE
             };
 
-            float rollProgress = 1f - (float)RollTimer / ROLL_DURATION;
-            float velocityMultiplier = (float)Math.Sin(rollProgress * MathHelper.Pi);
-
-            if (rollProgress < 0.5f)
-            {
-                Player.velocity.X = baseSpeed * RollDirection * velocityMultiplier * distanceMultiplier;
-            }
-            else
-            {
-                Player.velocity.X *= 0.95f;
-            }
+            Player.velocity.X = baseSpeed * RollDirection * distanceMultiplier;
 
             Player.velocity.Y = Math.Min(Player.velocity.Y, 0f);
         }
 
         private void EndRoll()
         {
-            int originalHeight = Player.height;
-
             IsRolling = false;
             IsOverweight = false;
 
-            float endSpeedMultiplier = CurrentLoadState switch
-            {
-                EquipLoadState.Light => 0.9f,
-                EquipLoadState.Medium => 0.85f,
-                EquipLoadState.Heavy => 0.7f,
-                _ => 0.85f
-            };
-            Player.velocity.X *= endSpeedMultiplier;
-
-            Player.height = Player.defaultHeight;
-            Player.position.Y -= Player.defaultHeight - originalHeight;
-
+            Player.velocity.X *= 0.7f;
             Player.fullRotation = 0f;
             Rotation = 0f;
         }
@@ -585,7 +538,6 @@ namespace TerraRing
             if (!IsRolling)
             {
                 IsRolling = true;
-                StartVelocity = Player.velocity;
                 RollDirection = Player.direction;
                 RollTimer = ROLL_DURATION;
 
@@ -615,8 +567,8 @@ namespace TerraRing
                     _ => MEDIUM_ROLL_DISTANCE
                 };
 
-                float initialSpeed = Math.Max(6f, Player.maxRunSpeed) * 1.5f * distanceMultiplier;
-                Player.velocity.X = RollDirection * initialSpeed;
+                float speed = Math.Max(6f, Player.maxRunSpeed) * distanceMultiplier;
+                Player.velocity.X = RollDirection * speed;
                 Player.velocity.Y = Math.Min(Player.velocity.Y, 0f);
             }
         }
